@@ -15,7 +15,7 @@
 		"staging": {
 			"name": "drp-operational-staging",
 			"workers_dev": false,
-			"hyperdrive": [{ "binding": "HYPERDRIVE", "id": "REPLACE_WITH_STAGING_HYPERDRIVE_ID" }],
+			"hyperdrive": [{ "binding": "HYPERDRIVE", "id": "ee76545cf0d847a2b2087b89b13b3ec3" }],
 			"r2_buckets": [{ "binding": "FILES", "bucket_name": "drp-ops-staging" }],
 			"vars": { "APP_ENV": "staging" }
 		},

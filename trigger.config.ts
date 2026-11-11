@@ -2,8 +2,8 @@ import { defineConfig } from '@trigger.dev/sdk';
 
 // Trigger.dev tasks run on Node (docs/ARCHITECTURE.md). Every Graph and Claude call lives in trigger/.
 export default defineConfig({
-	// Project ref from the Trigger.dev dashboard (Project settings). Set TRIGGER_PROJECT_REF in .env.
-	project: process.env.TRIGGER_PROJECT_REF ?? 'proj_REPLACE_ME',
+	// Trigger.dev project "drp-operational" (not a secret).
+	project: 'proj_nrywgvbrfplqknvjimwg',
 	dirs: ['./trigger'],
 	runtime: 'node',
 	maxDuration: 300,

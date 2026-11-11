@@ -1,0 +1,22 @@
+{
+	"extends": "$app/tsconfig",
+	"compilerOptions": {
+		"strict": true,
+		"types": ["$app/types", "node", "./worker-configuration.d.ts"]
+	},
+	"include": [
+		"src",
+		"vite.config.ts",
+		"prettier.config.js",
+		"eslint.config.js",
+		"drizzle.config.ts",
+		"trigger",
+		"trigger.config.ts"
+	],
+	"exclude": [
+		".svelte-kit/output",
+		".svelte-kit/cloudflare",
+		".svelte-kit/cloudflare-tmp",
+		".trigger"
+	]
+}

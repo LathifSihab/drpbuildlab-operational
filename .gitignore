@@ -1,0 +1,23 @@
+# Real client emails and Phase 0 material: personal data, and email/ holds a client API key
+email/
+phase0/inputs/
+phase0/outputs/
+phase0/RATINGS.md
+*.msg
+*.eml
+
+# Local secrets
+.env
+.env.*
+!.env.example
+.dev.vars
+
+# Build output
+node_modules/
+.svelte-kit/
+.wrangler/
+build/
+dist/
+
+# Trigger.dev local build output
+.trigger/

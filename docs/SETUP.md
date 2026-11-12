@@ -17,6 +17,15 @@ The code for Phase 1 is in the repo. These steps connect it to real accounts. Do
 5. **GitHub**: create the repo, push, and add environment `staging` with secrets `STAGING_DATABASE_URL`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `TRIGGER_ACCESS_TOKEN` (Trigger.dev personal access token) and variable `TRIGGER_PROJECT_REF`. A push to `main` then checks, migrates, and deploys both the app and the tasks.
 6. **Check Phase 1 "done when"**: sign in at `https://staging.<domain>` with Microsoft, see the empty project list, press "Run hello-world task", reload, and see the new row.
 
+### Token renewal
+
+| Token | Where it's stored | Renew by |
+|---|---|---|
+| Cloudflare API token "drp-operational GitHub deploy" | GitHub secret `CLOUDFLARE_API_TOKEN` (env `staging`) | its expiry date (created 2026-11-12; 1 year if chosen) |
+| Trigger.dev personal access token | GitHub secret `TRIGGER_ACCESS_TOKEN` (env `staging`) | when revoked or the owner changes |
+
+To renew: create the new token, run `gh secret set <NAME> --env staging --repo LathifSihab/drpbuildlab-operational`, then delete the old token.
+
 ## Environments
 
 | | Local | Staging | Production |

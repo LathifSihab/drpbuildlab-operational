@@ -11,10 +11,13 @@
 		"directory": ".svelte-kit/cloudflare"
 	},
 	"workers_dev": false,
+	"preview_urls": false,
 	"env": {
 		"staging": {
 			"name": "drp-operational-staging",
-			"workers_dev": false,
+			// Staging uses its free workers.dev address, protected by Cloudflare Access.
+			"workers_dev": true,
+			"preview_urls": false,
 			"hyperdrive": [{ "binding": "HYPERDRIVE", "id": "ee76545cf0d847a2b2087b89b13b3ec3" }],
 			"r2_buckets": [{ "binding": "FILES", "bucket_name": "drp-ops-staging" }],
 			"vars": { "APP_ENV": "staging" }
@@ -22,6 +25,8 @@
 		"production": {
 			"name": "drp-operational-production",
 			"workers_dev": false,
+			"preview_urls": false,
+			"routes": [{ "pattern": "operational.drpbuildlab.com", "custom_domain": true }],
 			"hyperdrive": [{ "binding": "HYPERDRIVE", "id": "REPLACE_WITH_PRODUCTION_HYPERDRIVE_ID" }],
 			"r2_buckets": [{ "binding": "FILES", "bucket_name": "drp-ops-prod" }],
 			"vars": { "APP_ENV": "production" }

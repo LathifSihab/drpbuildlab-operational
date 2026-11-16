@@ -14,11 +14,32 @@ Each phase ends on its **done when** line, checked on staging (except Phase 0).
 ## Phase 1: Skeleton on staging
 
 - SvelteKit + TypeScript + Drizzle + Neon; `adapter-cloudflare`; Hyperdrive binding.
-- Cloudflare Access with Entra ID in front of `staging`; JWT verification hook; `users` table and roles.
-- Trigger.dev project with a staging environment; one hello-world task that writes to the DB.
+- Cloudflare Access in front of staging (`https://drp-operational-staging.goosebumpsevents.workers.dev`); JWT verification hook; `users` table and roles.
+- Trigger.dev project; one hello-world task that writes to the DB (Development environment for now, see SETUP.md).
 - CI: typecheck, lint, tests; deploy `main` to staging.
 
-**Done when**: a team member signs in with Microsoft at the staging URL, sees an empty project list, and a manually triggered task writes a row visible in the UI.
+**Done when**: a team member signs in at the staging URL, sees the project list, and a manually triggered task writes a row visible in the UI.
+
+## Phase 1a: Manual project management
+
+The team can manage projects by hand before intake exists (and fix anything intake gets wrong later).
+
+- Project list with search; create, view, edit, and delete (soft delete: hidden and restorable by an admin).
+- Fields: title, client and partner (pick or type a new one), account manager, phase, platform, product type, site/staging/production/repo URLs (http/https only), domain registrar, tools, notes.
+- Roles: admin, dev, and business create and edit; only admin deletes and restores.
+- Every create, change (with the changed fields), delete, and restore writes `audit_log`; the project page shows its history.
+
+**Done when**: on staging, a team member creates a project, edits its phase, and an admin deletes and restores it, and the project page shows all four changes in its history.
+
+## Phase 1b: One login for all internal apps
+
+DRP Operational first; the CMS and client zone follow once Operational is in daily use. Details and rollout order in INTERNAL_GATEWAY.md.
+
+- DRP Operational (now): Access on staging; Microsoft Entra ID login in Cloudflare Zero Trust.
+- DRP Operational (production): separate internal domain `drpbuildlab.dev` on Cloudflare (`drpbuildlab.com` website and email untouched); `operational.drpbuildlab.dev`; portal at `internal.drpbuildlab.dev`.
+- Later: CMS and client zone staff pages move to `.dev` and verify the gateway token; their own staff logins are removed. Client/partner links and webhooks stay on `clientzone.drpbuildlab.com`, outside the gateway.
+
+**Done when**: the done-when line in INTERNAL_GATEWAY.md is true.
 
 ## Phase 2: Intake
 

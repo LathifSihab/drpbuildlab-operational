@@ -10,34 +10,13 @@ import {
 	text,
 	timestamp
 } from 'drizzle-orm/pg-core';
+import { PLATFORMS, PROJECT_PHASES } from '../../schemas/project.ts';
 
 export const userRole = pgEnum('user_role', ['admin', 'business', 'dev']);
 
-export const projectPhase = pgEnum('project_phase', [
-	'lead',
-	'proposal',
-	'discovery',
-	'design',
-	'build',
-	'uat',
-	'deployed',
-	'maintenance',
-	'closed',
-	'lost'
-]);
+export const projectPhase = pgEnum('project_phase', PROJECT_PHASES);
 
-export const platform = pgEnum('platform', [
-	'shopify',
-	'wix',
-	'wordpress',
-	'webflow',
-	'squarespace',
-	'storyblok',
-	'drp_custom',
-	'other',
-	'none',
-	'unknown'
-]);
+export const platform = pgEnum('platform', PLATFORMS);
 
 const timestamps = {
 	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -89,10 +68,15 @@ export const projects = pgTable(
 		productionUrl: text('production_url'),
 		domainRegistrar: text('domain_registrar'),
 		tools: jsonb('tools').$type<string[]>().notNull().default([]),
+		notes: text('notes'),
+		// Soft delete: deleted projects are hidden but kept, so their history and audit trail survive.
+		deletedAt: timestamp('deleted_at', { withTimezone: true }),
 		...timestamps
 	},
 	(t) => [index('projects_client_idx').on(t.clientId), index('projects_phase_idx').on(t.phase)]
 );
+
+export type Project = typeof projects.$inferSelect;
 
 export const auditLog = pgTable(
 	'audit_log',

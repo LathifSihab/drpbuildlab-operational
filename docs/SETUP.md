@@ -30,7 +30,7 @@ To renew: create the new token, run `gh secret set <NAME> --env staging --repo L
 
 | | Local | Staging | Production |
 |---|---|---|---|
-| App | `vite dev` | https://drp-operational-staging.goosebumpsevents.workers.dev (no custom domain yet), behind Access | `operational.drpbuildlab.com` on Workers, behind Access |
+| App | `vite dev` | https://drp-operational-staging.goosebumpsevents.workers.dev (no custom domain yet), behind Access | `operational.drpbuildlab.dev` on Workers, behind Access |
 | Database | Neon `dev` branch | Neon `staging` branch | Neon `main` branch |
 | Trigger.dev | Development environment (`npm run trigger:dev`) | For now also the Development environment: tasks run only while a developer runs `npm run trigger:dev` (our plan has no Staging environment; not deployed by CI) | Production environment, deployed by CI |
 | Intake mailbox | Fixtures only | `projects-staging@drpbuildlab.com` with anonymized samples | `projects@drpbuildlab.com` |

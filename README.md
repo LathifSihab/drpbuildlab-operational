@@ -11,6 +11,7 @@ Internal platform for the DRP team. Client project emails arrive in Outlook, AI 
 | `docs/ARCHITECTURE.md` | Devs | Flow, data model, statuses, auth, security, key decisions |
 | `docs/AI_PIPELINE.md` | Devs | Summary schema, prompts, validation, project-pack generation |
 | `docs/PLAN.md` | Everyone | Phases with "done when" criteria, up to staging and beyond |
+| `docs/INTERNAL_GATEWAY.md` | Everyone | One Microsoft login for all internal apps (Operational, CMS, client zone) at internal.drpbuildlab.dev |
 | `docs/SETUP.md` | Devs | Environments and external services (Microsoft, Cloudflare, Neon, Trigger.dev, GitHub) |
 | `docs/DESIGN.md` | Devs + AI | UI rules for DRP Operational itself |
 | `docs/OPEN_QUESTIONS.md` | Everyone | Decisions still open, each with a suggested answer |

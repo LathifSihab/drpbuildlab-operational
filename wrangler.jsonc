@@ -26,7 +26,7 @@
 			"name": "drp-operational-production",
 			"workers_dev": false,
 			"preview_urls": false,
-			"routes": [{ "pattern": "operational.drpbuildlab.com", "custom_domain": true }],
+			"routes": [{ "pattern": "operational.drpbuildlab.dev", "custom_domain": true }],
 			"hyperdrive": [{ "binding": "HYPERDRIVE", "id": "REPLACE_WITH_PRODUCTION_HYPERDRIVE_ID" }],
 			"r2_buckets": [{ "binding": "FILES", "bucket_name": "drp-ops-prod" }],
 			"vars": { "APP_ENV": "production" }

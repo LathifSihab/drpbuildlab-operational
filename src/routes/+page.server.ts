@@ -1,11 +1,18 @@
 import { fail } from '@sveltejs/kit';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq, ilike, isNotNull, isNull, or } from 'drizzle-orm';
 import { requireRole } from '#lib/server/auth/users.ts';
 import { auditLog, clients, projects } from '#lib/server/db/schema.ts';
+import { canDeleteProjects, canEditProjects } from '#lib/server/projects.ts';
 import { triggerTask } from '#lib/server/trigger.ts';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
+	const q = (url.searchParams.get('q') ?? '').trim().slice(0, 100);
+	// Only admins can see deleted projects (to restore them).
+	const showDeleted =
+		url.searchParams.get('deleted') === '1' && canDeleteProjects(locals.user.role);
+	const pattern = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+
 	const [projectRows, taskRuns] = await Promise.all([
 		locals.db
 			.select({
@@ -14,10 +21,17 @@ export const load: PageServerLoad = async ({ locals }) => {
 				phase: projects.phase,
 				platform: projects.platform,
 				client: clients.name,
-				updatedAt: projects.updatedAt
+				updatedAt: projects.updatedAt,
+				deletedAt: projects.deletedAt
 			})
 			.from(projects)
 			.leftJoin(clients, eq(projects.clientId, clients.id))
+			.where(
+				and(
+					showDeleted ? isNotNull(projects.deletedAt) : isNull(projects.deletedAt),
+					q ? or(ilike(projects.title, pattern), ilike(clients.name, pattern)) : undefined
+				)
+			)
 			.orderBy(desc(projects.updatedAt))
 			.limit(200),
 		locals.db
@@ -30,6 +44,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 	return {
 		projects: projectRows,
 		taskRuns,
+		q,
+		showDeleted,
+		canCreate: canEditProjects(locals.user.role),
+		canSeeDeleted: canDeleteProjects(locals.user.role),
 		canRunTasks: locals.user.role === 'admin' || locals.user.role === 'dev'
 	};
 };

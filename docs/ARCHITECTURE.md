@@ -92,7 +92,7 @@ The app talks to Infisical through its REST API with a machine identity (`INFISI
 
 ## Auth
 
-Cloudflare Access protects every route with Microsoft Entra ID as the identity provider. A SvelteKit hook verifies the `Cf-Access-Jwt-Assertion` JWT against the team's Access certificates and audience tag, then loads or creates the `users` row. Authorization (roles) is checked in server code on every load and action.
+DRP Operational is one of several internal apps behind one company login (docs/INTERNAL_GATEWAY.md). Cloudflare Access protects every route with Microsoft Entra ID as the identity provider. A SvelteKit hook verifies the `Cf-Access-Jwt-Assertion` JWT against the team's Access certificates and audience tag, then loads or creates the `users` row. Authorization (roles) is checked in server code on every load and action.
 
 ## Security
 
@@ -113,6 +113,7 @@ Cloudflare Access protects every route with Microsoft Entra ID as the identity p
 | Attachments listed, not read (v1) | Keeps quotes and contracts out of the model and keeps cost low; developer opens files from the list | Text extraction of PDFs/DOCX into the prompt |
 | Trigger.dev for all Graph and AI work | Retries, run logs, long-running calls, Node runtime | n8n (hard for Claude Code to debug), calls inside Workers |
 | Cloudflare Workers over Netlify | Cloudflare Access gives SSO without auth code; R2 and Hyperdrive in one place | Netlify + in-app auth |
+| One gateway login for all internal apps; token in cookie/header, not URL | Staff sign in once at internal.drpbuildlab.dev (separate domain, so drpbuildlab.com is never touched); a URL token leaks via history, logs, Referer, and forwarding and cannot be logged out (docs/INTERNAL_GATEWAY.md) | Per-app logins; signed tokens in the URL for staff |
 | Portable Postgres (Neon now, VPS later) over D1 | Must be reachable from both Workers and Trigger.dev, and movable to our own VPS | D1 (awkward outside Workers, not portable) |
 | Polling over Graph webhooks (v1) | No subscription renewal, nothing public to expose; 5-minute delay is fine | Change notifications |
 | Official WhatsApp Business Platform later; no OpenWA | OpenWA breaks WhatsApp terms, risks number bans, needs an always-on browser session | OpenWA, other unofficial libraries |

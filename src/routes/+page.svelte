@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { resolve } from '$app/paths';
+	import { optionLabel } from '#lib/components/ProjectForm.svelte';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -8,7 +10,38 @@
 	const dateTime = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
 </script>
 
-<h1 class="text-xl font-semibold">Projects</h1>
+<div class="flex flex-wrap items-center gap-3">
+	<h1 class="text-xl font-semibold">{data.showDeleted ? 'Deleted projects' : 'Projects'}</h1>
+	<form method="GET" role="search" class="ml-auto flex gap-2">
+		{#if data.showDeleted}<input type="hidden" name="deleted" value="1" />{/if}
+		<label for="q" class="sr-only">Search projects or clients</label>
+		<input
+			id="q"
+			name="q"
+			type="search"
+			value={data.q}
+			placeholder="Search project or client"
+			class="w-56 rounded border border-border bg-card px-2 py-1.5 text-sm"
+		/>
+		<button class="rounded border border-border px-3 py-1.5 text-sm">Search</button>
+	</form>
+	{#if data.canSeeDeleted}
+		<a
+			href={data.showDeleted ? resolve('/') : resolve('/?deleted=1')}
+			class="text-sm text-accent hover:underline"
+		>
+			{data.showDeleted ? 'Back to projects' : 'Show deleted'}
+		</a>
+	{/if}
+	{#if data.canCreate && !data.showDeleted}
+		<a
+			href={resolve('/projects/new')}
+			class="rounded bg-primary px-3 py-1.5 text-sm font-medium text-on-primary"
+		>
+			New project
+		</a>
+	{/if}
+</div>
 
 <section aria-labelledby="projects-heading" class="mt-4">
 	<h2 id="projects-heading" class="sr-only">Project list</h2>
@@ -16,7 +49,13 @@
 		<p
 			class="rounded border border-dashed border-border bg-card px-4 py-8 text-center text-muted-foreground"
 		>
-			No projects yet. Projects appear here when the first request is approved.
+			{#if data.q}
+				No projects match “{data.q}”.
+			{:else if data.showDeleted}
+				No deleted projects.
+			{:else}
+				No projects yet. Create one with “New project”, or they appear when a request is approved.
+			{/if}
 		</p>
 	{:else}
 		<div class="overflow-x-auto rounded border border-border bg-card">
@@ -33,10 +72,17 @@
 				<tbody>
 					{#each data.projects as project (project.id)}
 						<tr class="border-b border-border last:border-0">
-							<td class="px-3 py-2 font-medium">{project.title}</td>
+							<td class="px-3 py-2 font-medium">
+								<a
+									href={resolve('/projects/[id]', { id: String(project.id) })}
+									class="text-accent hover:underline"
+								>
+									{project.title}
+								</a>
+							</td>
 							<td class="px-3 py-2">{project.client ?? '–'}</td>
-							<td class="px-3 py-2">{project.phase}</td>
-							<td class="px-3 py-2">{project.platform}</td>
+							<td class="px-3 py-2">{optionLabel(project.phase)}</td>
+							<td class="px-3 py-2">{optionLabel(project.platform)}</td>
 							<td class="px-3 py-2 text-muted-foreground">{dateTime.format(project.updatedAt)}</td>
 						</tr>
 					{/each}

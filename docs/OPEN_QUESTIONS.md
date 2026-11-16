@@ -16,6 +16,9 @@ Each has a suggested answer. Confirm or correct, then move it to "Answered" with
 | 12 | technical | Create a free GitHub organization for DRP now, before Phase 4? | Yes: generated project repos go straight into the org, so nothing has to be transferred later |
 | 13 | technical (developer check, no owner decision needed) | Microsoft gives two versions of an email's text: the full text, or "only the new part" (`uniqueBody`, without the quoted earlier emails). For a forward, the client's brief *is* the quoted part. Does "only the new part" keep it or drop it? | Always read the full text for the first email of a conversation and "only the new part" for replies. Confirm with one test forward in Phase 2 |
 | 23 | technical | Flagged `[SECRET]` emails stay in the intake mailbox, because the app can only read it (`Mail.Read`). Allow the app to delete them once filed? | Yes: give the app `Mail.ReadWrite` on the intake mailbox only, and delete a `[SECRET]` email when it is marked done. Until then, someone deletes it by hand |
+| 24 | technical | Gateway token for staff: in the URL (as asked) or in a cookie/header? | Cookie/header from Cloudflare Access, checked by every app. A URL token leaks via history, logs, Referer, and forwarding and cannot be logged out (INTERNAL_GATEWAY.md). URL links stay only for clients and partners |
+| 25 | technical | Which client zone paths are for clients, partners, and webhooks (Access Bypass) and which are staff-only? | Read from the client zone code before go-live: `/admin*` staff; quote/payment links, partner pages, `/webhooks/*` bypass |
+| 26 | business | Partners: keep signed links, or give them their own login? | Keep signed links for now; revisit when partners need to see history across many quotes |
 
 ## Answered
 
@@ -39,3 +42,4 @@ Each has a suggested answer. Confirm or correct, then move it to "Answered" with
 | 20 | Commercial info to extract | Deadline and urgency, engagement type, account manager. Not prices or payment terms | Owner | 2026-11-12 |
 | 21 | Pre-sale work on the kanban | Add `lead` and `proposal` phases before discovery, and `lost` beside closed | Owner | 2026-11-12 |
 | 22 | Emails with secret information | Business team flags them with `[SECRET]` at the start of the subject; they skip the AI and are filed as named keys in the project's ".env" (Infisical) | Owner | 2026-11-12 |
+| 27 | Domain for internal apps: move `drpbuildlab.com` DNS to Cloudflare, or a separate domain? | Separate domain (`drpbuildlab.dev`, confirm at purchase) on Cloudflare; `drpbuildlab.com` website and email untouched | Owner | 2026-11-14 |

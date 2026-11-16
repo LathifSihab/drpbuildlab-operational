@@ -34,6 +34,7 @@ Scripts live in `package.json`; read them there.
 - `docs/ARCHITECTURE.md`: before changing the schema, tasks, statuses, or auth.
 - `docs/AI_PIPELINE.md`: before touching anything the model reads or writes.
 - `docs/PLAN.md`: to find the current phase and its done-when criteria.
+- `docs/INTERNAL_GATEWAY.md`: before changing login, domains, or anything shared with the CMS or client zone.
 - `docs/SETUP.md`: when something fails to connect or an env var is missing.
 - `docs/DESIGN.md`: before building or changing UI.
 - `docs/OPEN_QUESTIONS.md`: before assuming an answer to an undecided question.

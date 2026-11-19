@@ -27,6 +27,11 @@
 				<li>
 					<a href={resolve('/')} class="text-muted-foreground hover:text-foreground">Projects</a>
 				</li>
+				<li>
+					<a href={resolve('/clients')} class="text-muted-foreground hover:text-foreground"
+						>Clients</a
+					>
+				</li>
 			</ul>
 		</nav>
 		<p class="ml-auto text-sm text-muted-foreground">

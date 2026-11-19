@@ -33,8 +33,20 @@ export const actions: Actions = {
 		let id: number;
 		try {
 			id = await locals.db.transaction(async (tx) => {
-				const clientId = await resolveClient(tx, input.clientId, input.newClient, false);
-				const partnerId = await resolveClient(tx, input.partnerId, input.newPartner, true);
+				const clientId = await resolveClient(
+					tx,
+					user.email,
+					input.clientId,
+					input.newClient,
+					false
+				);
+				const partnerId = await resolveClient(
+					tx,
+					user.email,
+					input.partnerId,
+					input.newPartner,
+					true
+				);
 				await assertUser(tx, input.accountManagerId);
 				const row = projectValues(input, clientId, partnerId);
 				const [created] = await tx

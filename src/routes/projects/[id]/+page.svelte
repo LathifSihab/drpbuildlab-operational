@@ -83,6 +83,17 @@
 	{/if}
 {/snippet}
 
+{#snippet clientLink(id: number | null, name: string | null)}
+	{#if id !== null && name}
+		<a
+			href={resolve('/clients/[id]', { id: String(id) })}
+			class="text-accent underline-offset-2 hover:underline">{name}</a
+		>
+	{:else}
+		<span class="text-muted-foreground">–</span>
+	{/if}
+{/snippet}
+
 {#snippet value(text: string | null | undefined)}
 	{#if text}{text}{:else}<span class="text-muted-foreground">–</span>{/if}
 {/snippet}
@@ -171,11 +182,11 @@
 			<dl class="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
 				<div>
 					<dt class="text-muted-foreground">Client</dt>
-					<dd>{@render value(project.clientName)}</dd>
+					<dd>{@render clientLink(project.clientId, project.clientName)}</dd>
 				</div>
 				<div>
 					<dt class="text-muted-foreground">Partner</dt>
-					<dd>{@render value(project.partnerName)}</dd>
+					<dd>{@render clientLink(project.partnerId, project.partnerName)}</dd>
 				</div>
 				<div>
 					<dt class="text-muted-foreground">Account manager</dt>

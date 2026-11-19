@@ -98,8 +98,20 @@ export const actions: Actions = {
 				const [before] = await tx.select().from(projects).where(eq(projects.id, id)).for('update');
 				if (!before) error(404, 'Project not found');
 				if (before.deletedAt) error(409, 'This project is deleted; restore it first');
-				const clientId = await resolveClient(tx, input.clientId, input.newClient, false);
-				const partnerId = await resolveClient(tx, input.partnerId, input.newPartner, true);
+				const clientId = await resolveClient(
+					tx,
+					user.email,
+					input.clientId,
+					input.newClient,
+					false
+				);
+				const partnerId = await resolveClient(
+					tx,
+					user.email,
+					input.partnerId,
+					input.newPartner,
+					true
+				);
 				await assertUser(tx, input.accountManagerId);
 				const after = projectValues(input, clientId, partnerId);
 				const changes = diffProject(before, after);

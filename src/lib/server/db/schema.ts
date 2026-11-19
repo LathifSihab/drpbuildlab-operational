@@ -48,6 +48,8 @@ export const clients = pgTable('clients', {
 	...timestamps
 });
 
+export type Client = typeof clients.$inferSelect;
+
 export const projects = pgTable(
 	'projects',
 	{

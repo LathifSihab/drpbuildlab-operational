@@ -16,7 +16,7 @@ Product type: internal operations dashboard for a small agency team. Palette and
 | border | `#E2E8F0` | `#1E293B` |
 | destructive | `#DC2626` | `#F87171` |
 
-Font: Inter (variable, self-hosted via `@fontsource-variable/inter`), one family for everything; tabular numbers in tables. Status and phase colors are added in Phase 3 and 5, each paired with its text label.
+Font: Inter (variable, self-hosted via `@fontsource-variable/inter`), one family for everything; tabular numbers in tables. Phase colors are added in Phase 1c and status colors in Phase 3, each paired with its text label.
 
 ## Principles
 

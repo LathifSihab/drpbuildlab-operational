@@ -15,10 +15,11 @@ Each phase ends on its **done when** line, checked on staging (except Phase 0).
 
 - SvelteKit + TypeScript + Drizzle + Neon; `adapter-cloudflare`; Hyperdrive binding.
 - Cloudflare Access in front of staging (`https://drp-operational-staging.goosebumpsevents.workers.dev`); JWT verification hook; `users` table and roles.
-- Trigger.dev project; one hello-world task that writes to the DB (Development environment for now, see SETUP.md).
 - CI: typecheck, lint, tests; deploy `main` to staging.
 
-**Done when**: a team member signs in at the staging URL, sees the project list, and a manually triggered task writes a row visible in the UI.
+Trigger.dev moved to Phase 2 (decided 2026-11-19). The hello-world wiring already in `trigger/` stays, but Phase 1 does not depend on it.
+
+**Done when**: a team member signs in at the staging URL and sees the project list.
 
 ## Phase 1a: Manual project management
 
@@ -31,7 +32,39 @@ The team can manage projects by hand before intake exists (and fix anything inta
 
 **Done when**: on staging, a team member creates a project, edits its phase, and an admin deletes and restores it, and the project page shows all four changes in its history.
 
-## Phase 1b: One login for all internal apps
+## Phase 1b: Clients and partners
+
+- Client list with search; create, view, and edit. Delete only by admin, and only when no project uses the client.
+- Fields: name, partner (yes/no), contacts (name, email, phone, role), email domains (intake uses them in Phase 2), notes.
+- Client page lists its projects, both as end client and as partner.
+- Contacts and notes are personal data: admin and dev see them; business sees the name and projects only (ARCHITECTURE.md, data model).
+- Every create, change, and delete writes `audit_log`; the client page shows its history.
+
+**Done when**: on staging, a team member adds a client with a contact, links a project to it, and the client page shows that project and both changes in its history, while a business user does not see the contact.
+
+## Phase 1c: Kanban
+
+- Board with one column per phase (lead to lost); drag a card to change its phase; filter by account manager and platform.
+- A move is the same change as editing the phase on the project page: it writes `audit_log`.
+- Phase colors, each paired with its text label (DESIGN.md).
+
+**Done when**: on staging, a business team member moves a project on the board and the move shows in the project's history, every active project is on the board, and the business team updates phases there instead of anywhere else.
+
+## Phase 1d: Tasks on a project
+
+- New `tasks` table: project, title, description, status (`todo` / `in_progress` / `done`), assignee, due date, and request (empty for now; Phase 4 fills it from approved requests). Update ARCHITECTURE.md, where tasks are currently request rows with `work_status`.
+- Task list on the project page: add, edit, change status, delete. A "My tasks" page across projects.
+- Every change writes `audit_log`.
+
+**Done when**: on staging, a developer adds a task to a project, assigns it, and moves it to done, and it shows in "My tasks" and in the project's history.
+
+## Phase 1e: Team and roles
+
+- Admin page: list users (created on first sign-in), change a user's role. Every role change writes `audit_log`.
+
+**Done when**: on staging, an admin changes a user's role and that user's access changes on their next page load.
+
+## Phase 1f: One login for all internal apps
 
 DRP Operational first; the CMS and client zone follow once Operational is in daily use. Details and rollout order in INTERNAL_GATEWAY.md.
 
@@ -43,6 +76,7 @@ DRP Operational first; the CMS and client zone follow once Operational is in dai
 
 ## Phase 2: Intake
 
+- Trigger.dev first (moved from Phase 1): project and environments set up (SETUP.md step 3), and the hello-world task in `trigger/` writes a row visible in the UI on staging.
 - Entra app registration and the staging intake mailbox `projects-staging@drpbuildlab.com` (SETUP.md).
 - Answer OPEN_QUESTIONS #13 (`uniqueBody` on forwards) with a test forward first.
 - `poll-intake` scheduled task: Graph delta query, body as text, source preparation (thread splitting, role labels, secret redaction, attachments to R2, link extraction), store `requests`, `source_messages`, `attachments`, `redactions`; create/attach requests by `conversation_id`.
@@ -68,17 +102,17 @@ Use anonymized samples until OPEN_QUESTIONS #1 is answered.
 - Decide OPEN_QUESTIONS #12 (GitHub organization) first.
 - SvelteKit template repo with base `CLAUDE.md` and `.mcp.json`.
 - `generate-pack` task: MD files, repo from template, single commit.
-- `generate-brief` task: task brief on the linked project; task list with `work_status` on the project page.
+- `generate-brief` task: task brief on the linked project, added to its task list (Phase 1d) and linked to the request.
 
 **Done when**: approving a new build on staging produces a repo a developer can open in Claude Code and start Milestone 1 of its PLAN.md without asking for more context, and approving a small job (e.g. a Shopify fix) produces a task brief on the client's project that a developer can do without reading the original emails.
 
-## Phase 5: Registry and kanban
+## Phase 5: Project secrets
 
-- Registry table and project detail page (end client, partner, account manager, platform, deployments, domains, tools, requests and tasks).
+The registry and kanban moved to Phase 1 (1a-1c). The project page gains the project's requests here.
+
 - Secrets tab per project: keys per environment, reveal, add, "Download .env", all audited.
-- Kanban by `phase` with drag-and-drop; audit log on every move.
 
-**Done when**: every active project is in the registry and the business team updates phases there instead of anywhere else.
+**Done when**: on staging, a developer adds a project's keys for two environments and downloads a working `.env`, and every reveal and download shows in the audit log.
 
 ## Phase 6: Documents
 

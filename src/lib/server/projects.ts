@@ -1,5 +1,6 @@
 import { and, asc, eq, like, or, sql } from 'drizzle-orm';
 import { PLATFORMS, PROJECT_PHASES, type ProjectInput } from '../schemas/project.ts';
+import { auditClient } from './clients.ts';
 import type { Db } from './db/index.ts';
 import { auditLog, clients, projects, users, type Project, type Role } from './db/schema.ts';
 
@@ -59,10 +60,12 @@ export async function uniqueSlug(db: DbOrTx, title: string): Promise<string> {
 
 /**
  * The client (or partner) for a project: a typed new name wins over the dropdown and reuses an
- * existing client with the same name. Returns null when neither is given.
+ * existing client with the same name. Returns null when neither is given. A client created here
+ * is audited like one created on the clients page.
  */
 export async function resolveClient(
 	db: DbOrTx,
+	actor: string,
 	selectedId: number | null,
 	newName: string | null,
 	isPartner: boolean
@@ -78,6 +81,11 @@ export async function resolveClient(
 			.insert(clients)
 			.values({ name: newName, isPartner })
 			.returning({ id: clients.id });
+		await auditClient(db, actor, 'client.created', created.id, {
+			name: newName,
+			isPartner,
+			via: 'project form'
+		});
 		return created.id;
 	}
 	if (selectedId === null) return null;

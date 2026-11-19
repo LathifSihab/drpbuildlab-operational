@@ -39,7 +39,7 @@ Each stage is a separate Trigger.dev task. Statuses live in Postgres. Approving 
 | Table | Key fields | Notes |
 |---|---|---|
 | `users` | email, name, role (`admin` / `business` / `dev`) | Created on first sign-in from the Access JWT; role set by admin |
-| `clients` | name, is_partner, contacts (jsonb), email_domains (text[]), notes | Personal data: `admin` and `dev` only. `email_domains` drives intake matching |
+| `clients` | name, is_partner, contacts (jsonb), email_domains (text[]), notes | `contacts` and `notes` are personal data: `admin` and `dev` only (hidden from `business` on the page, in its history, and never overwritten by a `business` save). `email_domains` drives intake matching, so a domain belongs to one client only, and shared mail providers (gmail.com, ...) and DRP's own domains are rejected. Unique name per kind (client / partner). Hard delete by admin, only when no project (deleted ones included) uses it; the delete audit row omits contacts and notes |
 | `projects` | client_id, partner_id (nullable, -> `clients`), account_manager_id (-> `users`), title, phase, product_type, platform, platform_detail, site_url, tech_stack (jsonb), repo_url, staging_url, production_url, domain_registrar, tools (jsonb) | One row per client site or product |
 | `requests` | project_id (nullable until linked), conversation_id, request_type, engagement, urgency, deadline, pipeline_status, work_status (`todo` / `in_progress` / `done`, tasks only), brief_r2_key, new_info_since_approval, secret_flagged | One row per intake conversation |
 | `source_messages` | request_id, graph_message_id, part_index, label (`M<n>`), role (`internal_note` / `drp_to_client` / `external`), sender, recipients, sent_at, body_text, source (`email`) | One row per message after thread splitting; unique on (graph_message_id, part_index). Text only, secrets already redacted |
@@ -54,7 +54,7 @@ Each stage is a separate Trigger.dev task. Statuses live in Postgres. Approving 
 | `pipeline_runs` | request_id, task, trigger_run_id, model, lesson_ids (int[]), status, failure_reason, log_r2_key | One row per AI run, for debugging and evals; records which lessons were active |
 | `review_feedback` | request_id, summary_id, tags (text[]), note, created_by, created_at | Developer's "what did the AI get wrong" on approval (AI_PIPELINE.md section 7) |
 | `prompt_lessons` | text, status (`draft` / `active` / `retired`), from_feedback_ids (int[]), eval_result (jsonb), created_by, activated_by | Short rules appended to the summarize prompt; written by staff, never by the model directly |
-| `audit_log` | actor, action, entity, entity_id, at, diff (jsonb) | Request status, project phase, summary, secret-ref, redaction, and lesson changes |
+| `audit_log` | actor, action, entity, entity_id, at, diff (jsonb) | Project and client create/change/delete (with changed fields), request status, summary, secret-ref, redaction, and lesson changes |
 
 ## Statuses
 

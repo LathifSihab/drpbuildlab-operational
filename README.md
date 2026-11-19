@@ -24,6 +24,7 @@ Internal platform for the DRP team. Client project emails arrive in Outlook, AI 
 
 - Phase 0: done (`phase0/RATINGS.md`).
 - Phase 1: code done and passing `npm run check`, `npm run lint`, `npm test`, `npm run build`. Waiting on account setup: follow the "Phase 1 checklist" at the top of `docs/SETUP.md`.
+- Phase 1a (projects) and 1b (clients and partners): code done, checked locally; done-when still to check on staging. Next: 1c kanban, 1d tasks, 1e team and roles (`docs/PLAN.md`). Email intake and Trigger.dev are Phase 2.
 
 ## Run locally
 

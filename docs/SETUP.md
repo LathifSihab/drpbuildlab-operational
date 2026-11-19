@@ -6,16 +6,16 @@ The code for Phase 1 is in the repo. These steps connect it to real accounts. Do
 
 1. **Neon**: create a **new** project `drp-operational` (EU region). Don't reuse the existing "DRP Buildlab" project; its `production` branch holds another app's data. Create branches `staging` and `dev` from `main`. Copy each branch's connection string.
 2. **Local**: copy `.env.example` to `.env`; set `DATABASE_URL` (dev branch), `DEV_USER_EMAIL` and `BOOTSTRAP_ADMIN_EMAIL` (your email). Run `npm run db:migrate`, then `npm run dev`. You should see the empty project list.
-3. **Trigger.dev**: create project `drp-operational`. Put its ref in `.env` as `TRIGGER_PROJECT_REF`. In the dev and staging environments set `DATABASE_URL` (dev / staging branch). Copy each environment's secret key: dev key to `.env` as `TRIGGER_SECRET_KEY`. Locally, run `npm run trigger:dev` next to `npm run dev` and press "Run hello-world task".
+3. **Trigger.dev** (Phase 2; skip for Phase 1): create project `drp-operational`. Put its ref in `.env` as `TRIGGER_PROJECT_REF`. In the dev and staging environments set `DATABASE_URL` (dev / staging branch). Copy each environment's secret key: dev key to `.env` as `TRIGGER_SECRET_KEY`. Locally, run `npm run trigger:dev` next to `npm run dev` and press "Run hello-world task".
 4. **Cloudflare**:
    - R2 bucket `drp-ops-staging`.
    - Hyperdrive config pointing at the Neon **staging** branch; paste its id into `wrangler.jsonc` (`REPLACE_WITH_STAGING_HYPERDRIVE_ID`).
    - Zero Trust: add Microsoft Entra ID as identity provider; create a self-hosted Access application for `staging.<domain>` allowing your team's emails. Copy the team domain and the application's AUD tag.
-   - Worker secrets for staging: `npx wrangler secret put CF_ACCESS_TEAM_DOMAIN --env staging`, and the same for `CF_ACCESS_AUD`, `BOOTSTRAP_ADMIN_EMAIL`, `TRIGGER_SECRET_KEY` (staging key).
+   - Worker secrets for staging: `npx wrangler secret put CF_ACCESS_TEAM_DOMAIN --env staging`, and the same for `CF_ACCESS_AUD`, `BOOTSTRAP_ADMIN_EMAIL`, and in Phase 2 `TRIGGER_SECRET_KEY` (staging key).
    - Add the custom domain `staging.<domain>` to the `drp-operational-staging` Worker.
    - Create an API token with "Edit Cloudflare Workers" for CI.
 5. **GitHub**: create the repo, push, and add environment `staging` with secrets `STAGING_DATABASE_URL`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `TRIGGER_ACCESS_TOKEN` (Trigger.dev personal access token) and variable `TRIGGER_PROJECT_REF`. A push to `main` then checks, migrates, and deploys both the app and the tasks.
-6. **Check Phase 1 "done when"**: sign in at `https://staging.<domain>` with Microsoft, see the empty project list, press "Run hello-world task", reload, and see the new row.
+6. **Check Phase 1 "done when"**: sign in at `https://staging.<domain>` with Microsoft and see the empty project list. (The hello-world task check moved to Phase 2.)
 
 ### Token renewal
 

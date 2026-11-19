@@ -2,6 +2,8 @@
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import ClientForm, { CLIENT_FIELD_LABELS } from '#lib/components/ClientForm.svelte';
+	import HistoryList, { type HistoryEntry } from '#lib/components/HistoryList.svelte';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { optionLabel } from '#lib/components/ProjectForm.svelte';
 	import type { Contact } from '#lib/schemas/client.ts';
 	import type { PageProps } from './$types';
@@ -24,17 +26,6 @@
 		'client.deleted': 'Deleted'
 	};
 
-	type Change = { field: string; from: unknown; to: unknown };
-
-	function changesOf(diff: Record<string, unknown> | null): Change[] {
-		if (!diff) return [];
-		return Object.entries(diff).flatMap(([field, value]) =>
-			value !== null && typeof value === 'object' && 'from' in value && 'to' in value
-				? [{ field, from: value.from, to: value.to }]
-				: []
-		);
-	}
-
 	function formatValue(field: string, value: unknown): string {
 		if (value === null || value === undefined || value === '') return '–';
 		if (field === 'isPartner') return value ? 'Partner' : 'Client';
@@ -50,55 +41,52 @@
 		const text = typeof value === 'string' ? value : JSON.stringify(value);
 		return text.length > 160 ? `${text.slice(0, 160)}…` : text;
 	}
+
+	const historyNote = (entry: HistoryEntry) =>
+		entry.action === 'client.created' && entry.diff?.via ? 'from the project form' : undefined;
 </script>
 
 <svelte:head>
 	<title>{client.name} · DRP Operational</title>
 </svelte:head>
 
-<nav aria-label="Breadcrumb" class="text-sm text-muted-foreground">
+{#snippet empty()}<span class="text-muted-foreground">–</span>{/snippet}
+
+{#snippet breadcrumb()}
 	<a href={resolve('/clients')} class="hover:text-foreground">Clients</a>
 	<span aria-hidden="true">/</span>
-	<span aria-current="page">{client.name}</span>
-</nav>
+	<span aria-current="page" class="truncate">{client.name}</span>
+{/snippet}
 
-<div class="mt-1 flex flex-wrap items-center gap-3">
-	<h1 class="text-xl font-semibold">{client.name}</h1>
-	<span class="rounded bg-muted px-1.5 py-0.5 text-xs font-medium text-secondary">
-		{client.isPartner ? 'Partner' : 'Client'}
+{#snippet badges()}
+	<span class={['badge', client.isPartner && 'border-accent text-accent']}>
+		{client.isPartner ? 'Partner agency' : 'Client'}
 	</span>
-	<div class="ml-auto flex gap-2">
-		{#if data.canEdit && !editing}
-			<button
-				type="button"
-				class="rounded bg-primary px-3 py-1.5 text-sm font-medium text-on-primary"
-				onclick={() => (editing = true)}
-			>
-				Edit
-			</button>
-		{/if}
-		{#if data.canDelete && inUse === 0}
-			<form
-				method="POST"
-				action="?/delete"
-				use:enhance={({ cancel }) => {
-					if (!confirm(`Delete “${client.name}”? This cannot be undone.`)) cancel();
-				}}
-			>
-				<button
-					class="rounded border border-destructive px-3 py-1.5 text-sm font-medium text-destructive hover:bg-muted"
-				>
-					Delete
-				</button>
-			</form>
-		{/if}
-	</div>
-</div>
+{/snippet}
+
+{#snippet actions()}
+	{#if data.canEdit && !editing}
+		<button type="button" class="btn btn-primary" onclick={() => (editing = true)}>Edit</button>
+	{/if}
+	{#if data.canDelete && inUse === 0 && !editing}
+		<form
+			method="POST"
+			action="?/delete"
+			use:enhance={({ cancel }) => {
+				if (!confirm(`Delete “${client.name}”? This cannot be undone.`)) cancel();
+			}}
+		>
+			<button class="btn btn-danger">Delete</button>
+		</form>
+	{/if}
+{/snippet}
+
+<PageHeader title={client.name} {breadcrumb} {badges} {actions} />
 
 <div aria-live="polite">
 	{#if form?.deleteError}
 		<p
-			class="mt-3 rounded border border-destructive px-3 py-2 text-sm text-destructive"
+			class="mb-6 rounded-2xl border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive"
 			role="alert"
 		>
 			{form.deleteError}
@@ -106,8 +94,8 @@
 	{/if}
 </div>
 
-<div class="mt-4 max-w-4xl">
-	{#if editing && data.canEdit}
+{#if editing && data.canEdit}
+	<div class="max-w-4xl">
 		<h2 class="sr-only">Edit client</h2>
 		<ClientForm
 			client={{ ...client, contacts, notes }}
@@ -118,166 +106,147 @@
 			oncancel={() => (editing = false)}
 			onsaved={() => (editing = false)}
 		/>
-	{:else}
-		<section aria-labelledby="details-heading" class="rounded border border-border bg-card p-4">
-			<h2 id="details-heading" class="sr-only">Details</h2>
-			<dl class="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
-				<div>
-					<dt class="text-muted-foreground">Type</dt>
-					<dd>{client.isPartner ? 'Partner agency' : 'Client'}</dd>
-				</div>
-				<div>
-					<dt class="text-muted-foreground">Email domains</dt>
-					<dd>
-						{#if client.emailDomains.length}
-							<ul class="mt-0.5 flex flex-wrap gap-1">
-								{#each client.emailDomains as domain (domain)}
-									<li class="rounded bg-muted px-1.5 py-0.5 text-xs">{domain}</li>
-								{/each}
-							</ul>
-						{:else}
-							<span class="text-muted-foreground">–</span>
-						{/if}
-					</dd>
-				</div>
-				{#if data.canSeePersonal}
-					<div class="sm:col-span-2">
-						<dt class="text-muted-foreground">Notes</dt>
-						<dd class="whitespace-pre-line">
-							{#if notes}{notes}{:else}<span class="text-muted-foreground">–</span>{/if}
+	</div>
+{:else}
+	<div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+		<div class="space-y-6">
+			<section aria-labelledby="company-heading" class="card p-5 sm:p-6">
+				<h2 id="company-heading" class="mb-4 font-display text-lg font-bold [font-stretch:90%]">
+					Company
+				</h2>
+				<dl class="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
+					<div>
+						<dt class="text-[13px] text-muted-foreground">Type</dt>
+						<dd class="mt-0.5">
+							{client.isPartner
+								? 'Partner agency (resells our work)'
+								: 'Client (hires us directly)'}
 						</dd>
 					</div>
-				{/if}
-			</dl>
+					<div>
+						<dt class="text-[13px] text-muted-foreground">Email domains</dt>
+						<dd class="mt-1">
+							{#if client.emailDomains.length}
+								<ul class="flex flex-wrap gap-1.5">
+									{#each client.emailDomains as domain (domain)}
+										<li class="badge font-mono">{domain}</li>
+									{/each}
+								</ul>
+							{:else}
+								{@render empty()}
+							{/if}
+						</dd>
+					</div>
+				</dl>
+			</section>
 
 			{#if data.canSeePersonal}
-				<h3 class="mt-4 text-sm font-medium">Contacts</h3>
-				{#if contacts.length === 0}
-					<p class="text-sm text-muted-foreground">No contacts.</p>
+				<section aria-labelledby="contacts-heading" class="card p-5 sm:p-6">
+					<h2 id="contacts-heading" class="mb-4 font-display text-lg font-bold [font-stretch:90%]">
+						Contacts
+					</h2>
+					{#if contacts.length === 0}
+						<p class="text-sm text-muted-foreground">No contacts yet.</p>
+					{:else}
+						<ul class="grid gap-3 sm:grid-cols-2">
+							{#each contacts as contact, i (i)}
+								<li class="rounded-xl border border-border p-4 text-sm">
+									<p class="font-semibold">{contact.name}</p>
+									{#if contact.role}<p class="text-muted-foreground">{contact.role}</p>{/if}
+									<div class="mt-2 space-y-0.5">
+										{#if contact.email}
+											<a
+												href="mailto:{contact.email}"
+												class="block break-all text-accent hover:underline">{contact.email}</a
+											>
+										{/if}
+										{#if contact.phone}
+											<a
+												href="tel:{contact.phone.replace(/[^\d+]/g, '')}"
+												class="block hover:underline">{contact.phone}</a
+											>
+										{/if}
+									</div>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+					{#if notes}
+						<h3 class="mt-6 mb-1 text-[13px] text-muted-foreground">Notes</h3>
+						<p class="text-sm whitespace-pre-line">{notes}</p>
+					{/if}
+				</section>
+			{:else}
+				<p class="card px-5 py-4 text-sm text-muted-foreground">
+					Contacts and notes are visible to admins and developers only.
+				</p>
+			{/if}
+
+			<section aria-labelledby="projects-heading" class="card overflow-hidden">
+				<h2
+					id="projects-heading"
+					class="px-5 pt-5 pb-3 font-display text-lg font-bold [font-stretch:90%] sm:px-6"
+				>
+					Projects
+				</h2>
+				{#if data.projects.length === 0}
+					<p class="px-5 pb-5 text-sm text-muted-foreground sm:px-6">No projects yet.</p>
 				{:else}
-					<div class="mt-1 overflow-x-auto">
-						<table class="w-full text-left text-sm">
-							<thead class="border-b border-border text-muted-foreground">
+					<div class="overflow-x-auto">
+						<table class="data-table">
+							<thead>
 								<tr>
-									<th scope="col" class="py-1.5 pr-3 font-medium">Name</th>
-									<th scope="col" class="py-1.5 pr-3 font-medium">Email</th>
-									<th scope="col" class="py-1.5 pr-3 font-medium">Phone</th>
-									<th scope="col" class="py-1.5 font-medium">Role</th>
+									<th scope="col">Project</th>
+									<th scope="col">As</th>
+									<th scope="col">Phase</th>
+									<th scope="col">Platform</th>
 								</tr>
 							</thead>
 							<tbody>
-								{#each contacts as contact, i (i)}
-									<tr class="border-b border-border last:border-0">
-										<td class="py-1.5 pr-3">{contact.name}</td>
-										<td class="py-1.5 pr-3">
-											{#if contact.email}
-												<a href="mailto:{contact.email}" class="text-accent hover:underline"
-													>{contact.email}</a
-												>
-											{:else}<span class="text-muted-foreground">–</span>{/if}
+								{#each data.projects as project (project.id)}
+									<tr>
+										<td class="font-medium">
+											<a
+												href={resolve('/projects/[id]', { id: String(project.id) })}
+												class="hover:text-accent hover:underline">{project.title}</a
+											>
+											{#if project.deletedAt}
+												<span class="ml-1 text-xs font-normal text-destructive">(deleted)</span>
+											{/if}
 										</td>
-										<td class="py-1.5 pr-3">{contact.phone ?? '–'}</td>
-										<td class="py-1.5">{contact.role ?? '–'}</td>
+										<td>{project.as === 'client' ? 'End client' : 'Partner'}</td>
+										<td><span class="badge">{optionLabel(project.phase)}</span></td>
+										<td class="text-muted-foreground">{optionLabel(project.platform)}</td>
 									</tr>
 								{/each}
 							</tbody>
 						</table>
 					</div>
 				{/if}
-			{:else}
-				<p class="mt-4 border-t border-border pt-3 text-xs text-muted-foreground">
-					Contacts and notes are visible to admins and developers only.
-				</p>
-			{/if}
+			</section>
 
-			<p class="mt-4 border-t border-border pt-3 text-xs text-muted-foreground">
-				Created <time datetime={client.createdAt.toISOString()}
-					>{dateTime.format(client.createdAt)}</time
-				>
+			<p class="text-xs text-muted-foreground">
+				Created
+				<time datetime={client.createdAt.toISOString()}>{dateTime.format(client.createdAt)}</time>
 				· updated
 				<time datetime={client.updatedAt.toISOString()}>{dateTime.format(client.updatedAt)}</time>
 				{#if data.canDelete && inUse > 0}
 					· can be deleted once no project uses it
 				{/if}
 			</p>
-		</section>
-	{/if}
-</div>
-
-<section aria-labelledby="projects-heading" class="mt-8 max-w-4xl">
-	<h2 id="projects-heading" class="font-semibold">Projects</h2>
-	{#if data.projects.length === 0}
-		<p class="mt-1 text-sm text-muted-foreground">No projects yet.</p>
-	{:else}
-		<div class="mt-2 overflow-x-auto rounded border border-border bg-card">
-			<table class="w-full text-left text-sm">
-				<thead class="border-b border-border text-muted-foreground">
-					<tr>
-						<th scope="col" class="px-3 py-2 font-medium">Project</th>
-						<th scope="col" class="px-3 py-2 font-medium">As</th>
-						<th scope="col" class="px-3 py-2 font-medium">Phase</th>
-						<th scope="col" class="px-3 py-2 font-medium">Platform</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each data.projects as project (project.id)}
-						<tr class="border-b border-border last:border-0">
-							<td class="px-3 py-2 font-medium">
-								<a
-									href={resolve('/projects/[id]', { id: String(project.id) })}
-									class="text-accent hover:underline">{project.title}</a
-								>
-								{#if project.deletedAt}
-									<span class="ml-1 text-xs font-normal text-destructive">(deleted)</span>
-								{/if}
-							</td>
-							<td class="px-3 py-2">{project.as === 'client' ? 'End client' : 'Partner'}</td>
-							<td class="px-3 py-2">{optionLabel(project.phase)}</td>
-							<td class="px-3 py-2">{optionLabel(project.platform)}</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
 		</div>
-	{/if}
-</section>
 
-<section aria-labelledby="history-heading" class="mt-8 max-w-4xl">
-	<h2 id="history-heading" class="font-semibold">History</h2>
-	{#if data.history.length === 0}
-		<p class="mt-1 text-sm text-muted-foreground">No changes recorded.</p>
-	{:else}
-		<ol class="mt-2 divide-y divide-border rounded border border-border bg-card text-sm">
-			{#each data.history as entry (entry.id)}
-				{@const changes = entry.action === 'client.updated' ? changesOf(entry.diff) : []}
-				<li class="px-3 py-2">
-					<p>
-						<span class="font-medium">{ACTION_LABELS[entry.action] ?? entry.action}</span>
-						{#if entry.action === 'client.created' && entry.diff?.via}
-							<span class="text-muted-foreground">from the project form</span>
-						{/if}
-						<span class="text-muted-foreground">
-							by {entry.actor} ·
-							<time datetime={entry.at.toISOString()}>{dateTime.format(entry.at)}</time>
-						</span>
-					</p>
-					{#if changes.length}
-						<ul class="mt-1 space-y-0.5 text-xs">
-							{#each changes as change (change.field)}
-								<li>
-									<span class="text-muted-foreground"
-										>{CLIENT_FIELD_LABELS[change.field] ?? change.field}:</span
-									>
-									<del class="text-muted-foreground">{formatValue(change.field, change.from)}</del>
-									<span aria-hidden="true">→</span>
-									<span class="sr-only">changed to</span>
-									<ins class="no-underline">{formatValue(change.field, change.to)}</ins>
-								</li>
-							{/each}
-						</ul>
-					{/if}
-				</li>
-			{/each}
-		</ol>
-	{/if}
-</section>
+		<section aria-labelledby="history-heading" class="card p-5 lg:sticky lg:top-20">
+			<h2 id="history-heading" class="mb-4 font-display text-lg font-bold [font-stretch:90%]">
+				History
+			</h2>
+			<HistoryList
+				entries={data.history}
+				actionLabels={ACTION_LABELS}
+				fieldLabels={CLIENT_FIELD_LABELS}
+				format={formatValue}
+				note={historyNote}
+			/>
+		</section>
+	</div>
+{/if}

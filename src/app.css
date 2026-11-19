@@ -1,58 +1,95 @@
-/* Design tokens: docs/DESIGN.md. Change colors here only. */
+/*
+ * Design tokens: docs/DESIGN.md. Brand from drpbuildlab.com (its site.css): ink, fog, electric
+ * blue; Archivo for display, Geist for text, Geist Mono for codes. Change colors here only.
+ */
 @import 'tailwindcss';
-@import '@fontsource-variable/inter';
+@import '@fontsource-variable/archivo/wdth.css';
+@import '@fontsource-variable/archivo/wdth-italic.css';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
 
 :root {
-	--background: #f8fafc;
-	--foreground: #020617;
-	--card: #ffffff;
-	--primary: #0f172a;
+	--background: #f1f2f6; /* fog */
+	--foreground: #0b0b0c; /* ink */
+	--card: #ffffff; /* paper */
+	--primary: #1f5eff; /* electric: actions */
+	--primary-hover: #1749d6;
 	--on-primary: #ffffff;
-	--secondary: #334155;
-	--accent: #0369a1;
-	--muted: #e8ecf1;
-	--muted-foreground: #475569;
-	--border: #e2e8f0;
-	--destructive: #dc2626;
+	--secondary: #16171b;
+	--accent: #1f5eff; /* links, focus */
+	--muted: #eceef3;
+	--muted-foreground: #5a5d67;
+	--border: #e2e4ea;
+	--input: #c9ccd6;
+	--destructive: #d92d20;
+	--ring: rgb(31 94 255 / 0.18);
+	/* Always dark, as on the website: the header bar. */
+	--ink: #0b0b0c;
+	--on-ink: #ffffff;
+	--on-ink-muted: #d4d5dc;
+	--brand-hi: #7c9dff;
+	/* A picked chip: ink on light, paper on dark. */
+	--chip-on: #0b0b0c;
+	--on-chip-on: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
 	:root {
-		--background: #020617;
-		--foreground: #f8fafc;
-		--card: #0f172a;
-		--primary: #f8fafc;
-		--on-primary: #0f172a;
-		--secondary: #cbd5e1;
-		--accent: #38bdf8;
-		--muted: #1e293b;
-		--muted-foreground: #94a3b8;
-		--border: #1e293b;
-		--destructive: #f87171;
+		--background: #0b0b0c;
+		--foreground: #f4f5f8;
+		--card: #16171b;
+		--primary: #1f5eff;
+		--primary-hover: #3a72ff;
+		--on-primary: #ffffff;
+		--secondary: #d4d5dc;
+		--accent: #7c9dff;
+		--muted: #212228;
+		--muted-foreground: #a5a7b0;
+		--border: #2a2b31;
+		--input: #45474f;
+		--destructive: #ff6b6b;
+		--ring: rgb(124 157 255 / 0.3);
+		--ink: #000000;
+		--chip-on: #f4f5f8;
+		--on-chip-on: #0b0b0c;
 	}
 }
 
 @theme inline {
-	--font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+	--font-sans: 'Geist Variable', 'Helvetica Neue', Arial, sans-serif;
+	--font-display: 'Archivo Variable', 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;
+	--font-mono: 'Geist Mono Variable', ui-monospace, Menlo, Consolas, monospace;
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
 	--color-card: var(--card);
 	--color-primary: var(--primary);
+	--color-primary-hover: var(--primary-hover);
 	--color-on-primary: var(--on-primary);
 	--color-secondary: var(--secondary);
 	--color-accent: var(--accent);
 	--color-muted: var(--muted);
 	--color-muted-foreground: var(--muted-foreground);
 	--color-border: var(--border);
+	--color-input: var(--input);
 	--color-destructive: var(--destructive);
+	--color-ring: var(--ring);
+	--color-ink: var(--ink);
+	--color-on-ink: var(--on-ink);
+	--color-on-ink-muted: var(--on-ink-muted);
+	--color-brand-hi: var(--brand-hi);
+	--color-chip-on: var(--chip-on);
+	--color-on-chip-on: var(--on-chip-on);
 }
 
 @layer base {
 	html {
 		color-scheme: light dark;
+		/* Fields scrolled into view (focus, error links) clear the sticky header and save bar. */
+		scroll-padding-top: 5.5rem;
+		scroll-padding-bottom: 6rem;
 	}
 	body {
-		@apply bg-background font-sans text-foreground antialiased;
+		@apply bg-background font-sans text-[15px] text-foreground antialiased;
 	}
 	:focus-visible {
 		@apply outline-2 outline-offset-2 outline-accent;
@@ -60,5 +97,104 @@
 	td,
 	th {
 		font-variant-numeric: tabular-nums;
+	}
+}
+
+/* Building blocks. The website's rule: round the actions (pills), soften the fields. */
+@layer components {
+	/* Condensed uppercase headline, as on the website. */
+	.display {
+		font-family: var(--font-display);
+		font-weight: 800;
+		font-stretch: 80%;
+		text-transform: uppercase;
+		line-height: 0.95;
+		letter-spacing: -0.01em;
+	}
+
+	.btn {
+		@apply inline-flex items-center justify-center gap-2 rounded-full px-[18px] py-2.5 text-sm font-semibold whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-60;
+	}
+	.btn-sm {
+		@apply px-3.5 py-1.5 text-[13px];
+	}
+	.btn-primary {
+		@apply bg-primary text-on-primary hover:bg-primary-hover;
+	}
+	.btn-line {
+		@apply text-foreground ring-1 ring-input ring-inset hover:bg-chip-on hover:text-on-chip-on hover:ring-chip-on;
+	}
+	.btn-danger {
+		@apply text-destructive ring-1 ring-destructive ring-inset hover:bg-destructive hover:text-white;
+	}
+	.btn-ghost {
+		@apply text-muted-foreground hover:bg-muted hover:text-foreground;
+	}
+
+	.label {
+		@apply mb-1.5 block text-sm font-medium text-foreground;
+	}
+	.hint {
+		@apply mt-1.5 text-[13px] text-muted-foreground;
+	}
+	.field-error {
+		@apply mt-1.5 text-[13px] font-medium text-destructive;
+	}
+
+	/* Text inputs, selects, textareas. Also the frame of the tag input and picker. */
+	.input {
+		@apply w-full rounded-xl border border-input bg-card px-3.5 py-2.5 text-[15px] text-foreground transition-[border-color,box-shadow] placeholder:text-muted-foreground/70;
+	}
+	.input:focus,
+	.input:focus-within {
+		@apply border-primary ring-[3px] ring-ring outline-none;
+	}
+	.input[aria-invalid='true'],
+	.input:has([aria-invalid='true']) {
+		@apply border-destructive;
+	}
+	textarea.input {
+		field-sizing: content;
+		@apply min-h-28 resize-y;
+	}
+
+	/* A radio or checkbox shown as a pill; picked = ink. */
+	.chip {
+		@apply inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-input bg-card px-3.5 py-1.5 text-sm transition-colors select-none hover:border-foreground;
+	}
+	.chip:has(:checked) {
+		@apply border-chip-on bg-chip-on text-on-chip-on;
+	}
+	.chip:has(:focus-visible) {
+		@apply outline-2 outline-offset-2 outline-accent;
+	}
+
+	.card {
+		@apply rounded-2xl border border-border bg-card;
+	}
+
+	.badge {
+		@apply inline-flex items-center rounded-full border border-input px-2.5 py-0.5 text-xs font-medium whitespace-nowrap;
+	}
+
+	/* Section number, e.g. "01", in front of a form section title. */
+	.step {
+		@apply font-mono text-xs font-medium text-accent;
+	}
+
+	.data-table {
+		@apply w-full text-left text-sm;
+	}
+	.data-table th {
+		@apply border-b border-border px-4 py-2.5 text-[13px] font-medium text-muted-foreground;
+	}
+	.data-table td {
+		@apply border-b border-border px-4 py-3;
+	}
+	.data-table tbody tr:last-child td {
+		@apply border-b-0;
+	}
+	.data-table tbody tr {
+		@apply transition-colors hover:bg-muted/50;
 	}
 }

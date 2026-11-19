@@ -1,7 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import { and, desc, eq, ilike, isNotNull, isNull, or } from 'drizzle-orm';
 import { requireRole } from '#lib/server/auth/users.ts';
-import { auditLog, clients, projects } from '#lib/server/db/schema.ts';
+import { auditLog, clients, projects, users } from '#lib/server/db/schema.ts';
 import { canDeleteProjects, canEditProjects } from '#lib/server/projects.ts';
 import { triggerTask } from '#lib/server/trigger.ts';
 import type { Actions, PageServerLoad } from './$types';
@@ -21,11 +21,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				phase: projects.phase,
 				platform: projects.platform,
 				client: clients.name,
+				picName: users.name,
+				picEmail: users.email,
 				updatedAt: projects.updatedAt,
 				deletedAt: projects.deletedAt
 			})
 			.from(projects)
 			.leftJoin(clients, eq(projects.clientId, clients.id))
+			.leftJoin(users, eq(projects.picId, users.id))
 			.where(
 				and(
 					showDeleted ? isNotNull(projects.deletedAt) : isNull(projects.deletedAt),

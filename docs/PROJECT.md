@@ -19,7 +19,7 @@ Not every email is a new project. Incoming work ranges from new builds and rebui
 3. **Review**: a developer edits and approves the summary and confirms which project it belongs to. The AI draft and the approved version are both kept.
 4. **Open questions**: each is tagged `technical` (developer answers) or `business` (goes back to the business team / client). All answers are recorded in the platform.
 5. **Output on approval**: new builds, rebuilds, and demos get a project pack (`CLAUDE.md`, `docs/PROJECT.md`, `docs/DESIGN.md`, `docs/PLAN.md`, `docs/OPEN_QUESTIONS.md`) and a repo from our SvelteKit template. Small jobs on an existing site get a task brief on that client's project, with no new repo.
-6. **Registry**: every project with end client, partner, account manager, platform, deployment URLs, tech stack, tools, domain registrar, secret references, and its requests.
+6. **Registry**: every project with end client, partner, account manager, PIC (person in charge), platform, deployment URLs, tech stack, tools, domain registrar, secret references, and its requests.
 7. **Kanban**: client phase per project (lead, proposal, discovery, design, build, UAT, deployed, maintenance, closed, lost).
 8. **Project secrets**: a ".env" per project. Emails the business team flags with `[SECRET]` in the subject skip the AI and land in a Secrets inbox, where a developer names each value (`KEY=value`) and files it under the project and environment. Values are kept in Infisical; developers download a project's `.env` or pull it with the Infisical CLI.
 9. **Documents**: templates (NDA, user guide, project proposal first) filled from project data and exported to Word/PDF.

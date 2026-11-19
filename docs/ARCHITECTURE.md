@@ -32,6 +32,7 @@ Each stage is a separate Trigger.dev task. Statuses live in Postgres. Approving 
 - A **request** is one intake conversation: a piece of work asked for by email. Every request gets an AI summary.
 - `new_build`, `rebuild`, and `demo` requests create a project (or link to one) and produce a project pack.
 - `change_request`, `integration`, `platform_config`, `bug_fix`, and `maintenance` requests attach to the client's existing project and produce a task brief. Clients often run on third-party platforms (Shopify, Wix, WordPress, Storyblok, ...); `projects.platform` records which.
+- A **task** is one piece of work on a project: an enhancement, a revision of delivered work, a bug fix, an integration, platform configuration, or maintenance. A project has many tasks over its life. People add tasks by hand on the project page; from Phase 4, `generate-brief` adds one per approved small-job request, with the brief as its description and the request linked.
 - A **partner** is an agency or designer that brings work for its own client (e.g. a branding agency reselling websites). Partners are rows in `clients` with `is_partner = true`; a project has an end client and an optional partner.
 
 ## Data model (Drizzle, `src/lib/server/db/schema.ts`)
@@ -40,8 +41,10 @@ Each stage is a separate Trigger.dev task. Statuses live in Postgres. Approving 
 |---|---|---|
 | `users` | email, name, role (`admin` / `business` / `dev`) | Created on first sign-in from the Access JWT; role set by admin |
 | `clients` | name, is_partner, contacts (jsonb), email_domains (text[]), notes | `contacts` and `notes` are personal data: `admin` and `dev` only (hidden from `business` on the page, in its history, and never overwritten by a `business` save). `email_domains` drives intake matching, so a domain belongs to one client only, and shared mail providers (gmail.com, ...) and DRP's own domains are rejected. Unique name per kind (client / partner). Hard delete by admin, only when no project (deleted ones included) uses it; the delete audit row omits contacts and notes |
-| `projects` | client_id, partner_id (nullable, -> `clients`), account_manager_id (-> `users`), title, phase, product_type, platform, platform_detail, site_url, tech_stack (jsonb), repo_url, staging_url, production_url, domain_registrar, tools (jsonb) | One row per client site or product |
-| `requests` | project_id (nullable until linked), conversation_id, request_type, engagement, urgency, deadline, pipeline_status, work_status (`todo` / `in_progress` / `done`, tasks only), brief_r2_key, new_info_since_approval, secret_flagged | One row per intake conversation |
+| `projects` | client_id, partner_id (nullable, -> `clients`), account_manager_id (-> `users`), pic_id (-> `users`, person in charge of the work), title, phase, product_type, platform, platform_detail, site_url, tech_stack (jsonb), repo_url, staging_url, production_url, domain_registrar, tools (jsonb, list of tool names) | One row per client site or product |
+| `tools` | name (unique ignoring case) | Shared list behind the project form's tools dropdown. A name typed on the form is added here when the project is saved; saved projects reuse the list's spelling |
+| `tasks` | project_id (-> `projects`), title, type (`enhancement` / `revision` / `bug_fix` / `integration` / `platform_config` / `maintenance` / `other`), status, description, assignee_id (-> `users`), due_date, request_id (nullable; foreign key added with `requests` in Phase 2) | One row per piece of work on a project. Hard delete (audited). Hidden with their project when it is soft-deleted |
+| `requests` | project_id (nullable until linked), conversation_id, request_type, engagement, urgency, deadline, pipeline_status, brief_r2_key, new_info_since_approval, secret_flagged | One row per intake conversation |
 | `source_messages` | request_id, graph_message_id, part_index, label (`M<n>`), role (`internal_note` / `drp_to_client` / `external`), sender, recipients, sent_at, body_text, source (`email`) | One row per message after thread splitting; unique on (graph_message_id, part_index). Text only, secrets already redacted |
 | `attachments` | request_id, source_message_id, label (`A<n>`), kind (`file` / `link`), name, content_type, size, r2_key, url | Files in R2; links stored as URLs. The model sees the list, not the contents |
 | `redactions` | request_id, source_message_id, kind, inbox_path, resolved_by, resolved_at | Records that a secret was removed and where it waits in Infisical; never the value |
@@ -54,13 +57,15 @@ Each stage is a separate Trigger.dev task. Statuses live in Postgres. Approving 
 | `pipeline_runs` | request_id, task, trigger_run_id, model, lesson_ids (int[]), status, failure_reason, log_r2_key | One row per AI run, for debugging and evals; records which lessons were active |
 | `review_feedback` | request_id, summary_id, tags (text[]), note, created_by, created_at | Developer's "what did the AI get wrong" on approval (AI_PIPELINE.md section 7) |
 | `prompt_lessons` | text, status (`draft` / `active` / `retired`), from_feedback_ids (int[]), eval_result (jsonb), created_by, activated_by | Short rules appended to the summarize prompt; written by staff, never by the model directly |
-| `audit_log` | actor, action, entity, entity_id, at, diff (jsonb) | Project and client create/change/delete (with changed fields), request status, summary, secret-ref, redaction, and lesson changes |
+| `audit_log` | actor, action, entity, entity_id, at, diff (jsonb) | Project, client, and task create/change/delete (with changed fields; a task row's diff also carries `projectId` and the task title, so the project's history lists its tasks), request status, summary, secret-ref, redaction, and lesson changes |
 
 ## Statuses
 
 `requests.pipeline_status`: `received` -> `summarizing` -> `needs_review` -> `approved` -> `generating` -> `ready`, or `failed` (with `pipeline_runs.failure_reason`) from any running step. A failed step can be retried from the UI. `generating` runs `generate-pack` or `generate-brief` depending on the request type.
 
-`requests.work_status` (task requests only, set by people): `todo`, `in_progress`, `done`.
+`tasks.status` (set by people): `todo`, `in_progress`, `done`.
+
+`tasks.type`: `enhancement` (new or improved functionality), `revision` (rework of something DRP already delivered: client feedback, UAT rounds), and the small-job request types `bug_fix`, `integration`, `platform_config`, `maintenance`, plus `other`. In Phase 4 `generate-brief` maps the request type to the task type (`change_request` -> `enhancement`); the reviewer can change it.
 
 `projects.phase` (kanban, set by people): `lead`, `proposal` (quote sent or demo in progress), `discovery`, `design`, `build`, `uat`, `deployed`, `maintenance`, `closed`, `lost`.
 

@@ -8,6 +8,8 @@
 		clients: Named[];
 		partners: Named[];
 		users: { id: number; email: string; name: string | null }[];
+		/** The shared tool list for the tools dropdown. */
+		tools: string[];
 		phases: readonly string[];
 		platforms: readonly string[];
 	};
@@ -18,6 +20,7 @@
 		clientId: number | null;
 		partnerId: number | null;
 		accountManagerId: number | null;
+		picId: number | null;
 		phase: string;
 		platform: string;
 		platformDetail: string | null;
@@ -44,6 +47,7 @@
 		partnerId: 'Partner',
 		newPartner: 'New partner',
 		accountManagerId: 'Account manager',
+		picId: 'PIC',
 		phase: 'Phase',
 		platform: 'Platform',
 		platformDetail: 'Platform detail',
@@ -57,7 +61,11 @@
 		notes: 'Notes'
 	};
 
-	const SPECIAL_LABELS: Record<string, string> = { uat: 'UAT', drp_custom: 'DRP custom' };
+	const SPECIAL_LABELS: Record<string, string> = {
+		uat: 'UAT',
+		drp_custom: 'DRP custom',
+		wordpress: 'WordPress'
+	};
 
 	/** Display label for a phase or platform value, e.g. `drp_custom` -> "DRP custom". */
 	export function optionLabel(value: string): string {
@@ -68,11 +76,25 @@
 	export function userLabel(user: { email: string; name: string | null }): string {
 		return user.name ? `${user.name} (${user.email})` : user.email;
 	}
+
+	/** Where an error message jumps to, when that is not `pf-<field>`. */
+	const ERROR_TARGETS: Partial<Record<string, string>> = {
+		newClient: 'pf-clientId',
+		newPartner: 'pf-partnerId'
+	};
 </script>
 
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { enhance } from '$app/forms';
+	import ChoiceChips from '#lib/components/ChoiceChips.svelte';
+	import EntityPicker from '#lib/components/EntityPicker.svelte';
+	import ErrorSummary from '#lib/components/ErrorSummary.svelte';
+	import FormFooter from '#lib/components/FormFooter.svelte';
+	import FormSection from '#lib/components/FormSection.svelte';
+	import ToolPicker from '#lib/components/ToolPicker.svelte';
+	import { guardUnsavedChanges } from '#lib/unsaved-changes.ts';
+	import { withHttps } from '#lib/url.ts';
 
 	type Props = {
 		options: ProjectOptions;
@@ -90,6 +112,9 @@
 	let { options, project, form, action, submitLabel, oncancel, onsaved }: Props = $props();
 
 	let submitting = $state(false);
+	let dirty = $state(false);
+	const markDirty = () => (dirty = true);
+	guardUnsavedChanges(() => dirty && !submitting);
 
 	const idOrEmpty = (id: number | null | undefined) => (id == null ? '' : String(id));
 
@@ -103,6 +128,7 @@
 			partnerId: idOrEmpty(p?.partnerId),
 			newPartner: '',
 			accountManagerId: idOrEmpty(p?.accountManagerId),
+			picId: idOrEmpty(p?.picId),
 			phase: p?.phase ?? 'lead',
 			platform: p?.platform ?? 'unknown',
 			platformDetail: p?.platformDetail ?? '',
@@ -119,94 +145,115 @@
 	});
 
 	const errors = $derived(form?.errors ?? {});
-	const errorCount = $derived(Object.values(errors).filter((e) => e && e.length > 0).length);
-
 	const hasError = (name: ProjectField) => (errors[name]?.length ?? 0) > 0;
+	const errorOf = (name: ProjectField) => errors[name]?.join(' ');
+
+	const errorItems = $derived(
+		Object.entries(errors)
+			.filter(([, messages]) => messages && messages.length > 0)
+			.map(([field, messages]) => ({
+				targetId: ERROR_TARGETS[field] ?? `pf-${field}`,
+				label: FIELD_LABELS[field] ?? field,
+				message: (messages ?? []).join(' ')
+			}))
+	);
 
 	function describedBy(name: ProjectField, hint?: string): string | undefined {
 		const ids = [hint ? `pf-${name}-hint` : '', hasError(name) ? `pf-${name}-error` : ''];
 		return ids.filter(Boolean).join(' ') || undefined;
 	}
 
-	const inputClass =
-		'mt-1 w-full rounded border border-border bg-background px-2 py-1.5 text-sm aria-invalid:border-destructive';
+	const phaseOptions = $derived(options.phases.map((p) => ({ value: p, label: optionLabel(p) })));
+	const platformOptions = $derived(
+		options.platforms.map((p) => ({ value: p, label: optionLabel(p) }))
+	);
+
+	const TOOLS_HINT = 'Pick every tool the project uses. Missing one? Type it and press +.';
+
+	function cancel() {
+		if (dirty && !confirm('Discard your changes?')) return;
+		dirty = false;
+		oncancel?.();
+	}
+
+	function onUrlBlur(event: FocusEvent & { currentTarget: HTMLInputElement }) {
+		const el = event.currentTarget;
+		const fixed = withHttps(el.value);
+		if (fixed !== el.value) {
+			el.value = fixed;
+			markDirty();
+		}
+	}
 </script>
 
 {#snippet hintAndError(name: ProjectField, hint?: string)}
-	{#if hint}
-		<p id="pf-{name}-hint" class="mt-1 text-xs text-muted-foreground">{hint}</p>
-	{/if}
-	{#if hasError(name)}
-		<p id="pf-{name}-error" class="mt-1 text-xs text-destructive">{errors[name]?.join(' ')}</p>
-	{/if}
+	{#if hint}<p id="pf-{name}-hint" class="hint">{hint}</p>{/if}
+	{#if hasError(name)}<p id="pf-{name}-error" class="field-error">{errorOf(name)}</p>{/if}
 {/snippet}
 
-{#snippet textField(name: ProjectField, type: 'text' | 'url' = 'text', hint?: string)}
+{#snippet textField(
+	name: ProjectField,
+	opts: { type?: 'text' | 'url'; hint?: string; placeholder?: string } = {}
+)}
 	<div>
-		<label for="pf-{name}" class="block text-sm font-medium">{FIELD_LABELS[name]}</label>
+		<label for="pf-{name}" class="label">{FIELD_LABELS[name]}</label>
 		<input
 			id="pf-{name}"
 			{name}
-			{type}
+			type={opts.type ?? 'text'}
+			inputmode={opts.type === 'url' ? 'url' : undefined}
 			value={initial[name]}
-			placeholder={type === 'url' ? 'https://' : undefined}
+			placeholder={opts.placeholder ?? (opts.type === 'url' ? 'example.com' : undefined)}
+			aria-invalid={hasError(name) || undefined}
+			aria-describedby={describedBy(name, opts.hint)}
+			class="input"
+			onblur={opts.type === 'url' ? onUrlBlur : undefined}
+		/>
+		{@render hintAndError(name, opts.hint)}
+	</div>
+{/snippet}
+
+{#snippet userSelect(name: 'accountManagerId' | 'picId', hint?: string)}
+	<div>
+		<label for="pf-{name}" class="label">{FIELD_LABELS[name]}</label>
+		<select
+			id="pf-{name}"
+			{name}
+			value={initial[name]}
 			aria-invalid={hasError(name) || undefined}
 			aria-describedby={describedBy(name, hint)}
-			class={inputClass}
-		/>
+			class="input"
+		>
+			<option value="">Nobody yet</option>
+			{#each options.users as user (user.id)}
+				<option value={String(user.id)}>{userLabel(user)}</option>
+			{/each}
+		</select>
 		{@render hintAndError(name, hint)}
 	</div>
 {/snippet}
 
-{#snippet orgField(
-	idName: 'clientId' | 'partnerId',
-	newName: 'newClient' | 'newPartner',
-	choices: Named[]
-)}
-	<div>
-		<label for="pf-{idName}" class="block text-sm font-medium">{FIELD_LABELS[idName]}</label>
-		<select
-			id="pf-{idName}"
-			name={idName}
-			value={initial[idName]}
-			aria-invalid={hasError(idName) || undefined}
-			aria-describedby={describedBy(idName)}
-			class={inputClass}
-		>
-			<option value="">None</option>
-			{#each choices as choice (choice.id)}
-				<option value={String(choice.id)}>{choice.name}</option>
-			{/each}
-		</select>
-		{@render hintAndError(idName)}
-	</div>
-	<div>
-		<label for="pf-{newName}" class="block text-sm font-medium">
-			Or add a {idName === 'clientId' ? 'new client' : 'new partner'}
-		</label>
-		<input
-			id="pf-{newName}"
-			name={newName}
-			value={initial[newName]}
-			aria-invalid={hasError(newName) || undefined}
-			aria-describedby={describedBy(newName, 'Replaces the selection when filled in')}
-			class={inputClass}
-		/>
-		{@render hintAndError(newName, 'Replaces the selection when filled in')}
-	</div>
-{/snippet}
-
+<!-- The form only listens for Ctrl/Cmd+Enter bubbling up from its fields; it is never focused itself. -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <form
 	method="POST"
 	{action}
 	novalidate
-	class="space-y-4"
+	class="space-y-5"
+	oninput={markDirty}
+	onkeydown={(event) => {
+		if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+			event.preventDefault();
+			event.currentTarget.requestSubmit();
+		}
+	}}
 	use:enhance={({ formElement }) => {
 		submitting = true;
 		return async ({ result, update }) => {
 			await update();
 			submitting = false;
 			if (result.type === 'redirect') {
+				dirty = false;
 				onsaved?.();
 			} else if (result.type === 'failure') {
 				await tick();
@@ -215,146 +262,159 @@
 		};
 	}}
 >
-	<div aria-live="polite">
-		{#if errorCount > 0}
-			<p class="rounded border border-destructive px-3 py-2 text-sm text-destructive" role="alert">
-				{errorCount === 1 ? '1 field needs' : `${errorCount} fields need`} attention.
-			</p>
-		{/if}
-	</div>
+	<ErrorSummary items={errorItems} />
 
-	<fieldset class="rounded border border-border bg-card p-4">
-		<legend class="px-1 text-sm font-semibold">Project</legend>
-		<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-			<div class="sm:col-span-2 lg:col-span-3">
-				<label for="pf-title" class="block text-sm font-medium">
-					Title <span class="text-destructive" aria-hidden="true">*</span>
-				</label>
-				<input
-					id="pf-title"
-					name="title"
-					value={initial.title}
-					required
-					maxlength="200"
-					aria-invalid={hasError('title') || undefined}
-					aria-describedby={describedBy('title')}
-					class={inputClass}
-				/>
-				{@render hintAndError('title')}
-			</div>
+	<!-- Rebuilt from the sent values after a failed save. -->
+	{#key form}
+		<FormSection step="01" title="Basics" description="What the project is and where it stands.">
+			<div class="space-y-5">
+				<div>
+					<label for="pf-title" class="label">
+						Title <span class="text-destructive" aria-hidden="true">*</span>
+					</label>
+					<input
+						id="pf-title"
+						name="title"
+						value={initial.title}
+						required
+						maxlength="200"
+						placeholder="e.g. TÈRRO Vastgoed – new website"
+						aria-invalid={hasError('title') || undefined}
+						aria-describedby={describedBy('title')}
+						class="input text-lg font-medium"
+					/>
+					{@render hintAndError('title')}
+				</div>
 
-			<div>
-				<label for="pf-phase" class="block text-sm font-medium">{FIELD_LABELS.phase}</label>
-				<select
-					id="pf-phase"
+				<ChoiceChips
 					name="phase"
+					legend="Phase"
+					idPrefix="pf-phase"
+					options={phaseOptions}
 					value={initial.phase}
-					aria-invalid={hasError('phase') || undefined}
-					aria-describedby={describedBy('phase')}
-					class={inputClass}
-				>
-					{#each options.phases as phase (phase)}
-						<option value={phase}>{optionLabel(phase)}</option>
-					{/each}
-				</select>
-				{@render hintAndError('phase')}
-			</div>
+					error={errorOf('phase')}
+					onchange={markDirty}
+				/>
 
-			<div>
-				<label for="pf-platform" class="block text-sm font-medium">{FIELD_LABELS.platform}</label>
-				<select
-					id="pf-platform"
+				<ChoiceChips
 					name="platform"
+					legend="Platform"
+					idPrefix="pf-platform"
+					options={platformOptions}
 					value={initial.platform}
-					aria-invalid={hasError('platform') || undefined}
-					aria-describedby={describedBy('platform')}
-					class={inputClass}
-				>
-					{#each options.platforms as platform (platform)}
-						<option value={platform}>{optionLabel(platform)}</option>
-					{/each}
-				</select>
-				{@render hintAndError('platform')}
+					error={errorOf('platform')}
+					onchange={markDirty}
+				/>
+
+				<div class="grid gap-4 sm:grid-cols-2">
+					{@render textField('platformDetail', {
+						hint: 'Theme, plan, or page builder',
+						placeholder: 'e.g. Dawn theme, Shopify Basic'
+					})}
+					{@render textField('productType', { placeholder: 'e.g. Real-estate website' })}
+				</div>
 			</div>
+		</FormSection>
 
-			{@render textField('platformDetail', 'text', 'e.g. theme name, plan, page builder')}
-			{@render textField('productType')}
-		</div>
-	</fieldset>
-
-	<fieldset class="rounded border border-border bg-card p-4">
-		<legend class="px-1 text-sm font-semibold">People</legend>
-		<div class="grid gap-3 sm:grid-cols-2">
-			{@render orgField('clientId', 'newClient', options.clients)}
-			{@render orgField('partnerId', 'newPartner', options.partners)}
-			<div>
-				<label for="pf-accountManagerId" class="block text-sm font-medium">
-					{FIELD_LABELS.accountManagerId}
-				</label>
-				<select
-					id="pf-accountManagerId"
-					name="accountManagerId"
-					value={initial.accountManagerId}
-					aria-invalid={hasError('accountManagerId') || undefined}
-					aria-describedby={describedBy('accountManagerId')}
-					class={inputClass}
-				>
-					<option value="">None</option>
-					{#each options.users as user (user.id)}
-						<option value={String(user.id)}>{userLabel(user)}</option>
-					{/each}
-				</select>
-				{@render hintAndError('accountManagerId')}
+		<FormSection step="02" title="People" description="Who it is for, and who runs it at DRP.">
+			<div class="grid gap-4 sm:grid-cols-2">
+				<div>
+					<label for="pf-clientId" class="label">Client</label>
+					<EntityPicker
+						id="pf-clientId"
+						idName="clientId"
+						newName="newClient"
+						noun="client"
+						options={options.clients}
+						selectedId={initial.clientId}
+						newValue={initial.newClient}
+						invalid={hasError('clientId') || hasError('newClient')}
+						describedby={hasError('clientId') || hasError('newClient')
+							? 'pf-clientId-error'
+							: undefined}
+						onchange={markDirty}
+					/>
+					{#if hasError('clientId') || hasError('newClient')}
+						<p id="pf-clientId-error" class="field-error">
+							{errorOf('clientId') ?? errorOf('newClient')}
+						</p>
+					{/if}
+				</div>
+				<div>
+					<label for="pf-partnerId" class="label">Partner agency</label>
+					<EntityPicker
+						id="pf-partnerId"
+						idName="partnerId"
+						newName="newPartner"
+						noun="partner"
+						options={options.partners}
+						selectedId={initial.partnerId}
+						newValue={initial.newPartner}
+						invalid={hasError('partnerId') || hasError('newPartner')}
+						describedby={hasError('partnerId') || hasError('newPartner')
+							? 'pf-partnerId-error'
+							: undefined}
+						onchange={markDirty}
+					/>
+					{#if hasError('partnerId') || hasError('newPartner')}
+						<p id="pf-partnerId-error" class="field-error">
+							{errorOf('partnerId') ?? errorOf('newPartner')}
+						</p>
+					{/if}
+				</div>
+				{@render userSelect('accountManagerId')}
+				{@render userSelect('picId', 'Person in charge of the work')}
 			</div>
-		</div>
-	</fieldset>
+		</FormSection>
 
-	<fieldset class="rounded border border-border bg-card p-4">
-		<legend class="px-1 text-sm font-semibold">Links and hosting</legend>
-		<div class="grid gap-3 sm:grid-cols-2">
-			{@render textField('siteUrl', 'url')}
-			{@render textField('stagingUrl', 'url')}
-			{@render textField('productionUrl', 'url')}
-			{@render textField('repoUrl', 'url')}
-			{@render textField('domainRegistrar')}
-		</div>
-	</fieldset>
-
-	<fieldset class="rounded border border-border bg-card p-4">
-		<legend class="px-1 text-sm font-semibold">Other</legend>
-		<div class="grid gap-3">
-			{@render textField('tools', 'text', 'Comma-separated, e.g. Klaviyo, Google Analytics')}
-			<div>
-				<label for="pf-notes" class="block text-sm font-medium">{FIELD_LABELS.notes}</label>
-				<textarea
-					id="pf-notes"
-					name="notes"
-					rows="5"
-					value={initial.notes}
-					aria-invalid={hasError('notes') || undefined}
-					aria-describedby={describedBy('notes')}
-					class={inputClass}></textarea>
-				{@render hintAndError('notes')}
-			</div>
-		</div>
-	</fieldset>
-
-	<div class="flex items-center gap-2">
-		<button
-			class="rounded bg-primary px-3 py-1.5 text-sm font-medium text-on-primary disabled:opacity-60"
-			disabled={submitting}
+		<FormSection
+			step="03"
+			title="Links and hosting"
+			description="Where it lives. Paste a domain; https:// is added for you."
 		>
-			{submitting ? 'Saving…' : submitLabel}
-		</button>
-		{#if oncancel}
-			<button
-				type="button"
-				class="rounded border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted"
-				onclick={oncancel}
-				disabled={submitting}
-			>
-				Cancel
-			</button>
-		{/if}
-	</div>
+			<div class="grid gap-4 sm:grid-cols-2">
+				{@render textField('siteUrl', { type: 'url' })}
+				{@render textField('productionUrl', { type: 'url' })}
+				{@render textField('stagingUrl', { type: 'url' })}
+				{@render textField('repoUrl', { type: 'url', placeholder: 'github.com/…' })}
+				{@render textField('domainRegistrar', { placeholder: 'e.g. Combell, TransIP' })}
+			</div>
+		</FormSection>
+
+		<FormSection step="04" title="Tools and notes">
+			<div class="space-y-5">
+				<div>
+					<label for="pf-tools" class="label">{FIELD_LABELS.tools}</label>
+					<ToolPicker
+						id="pf-tools"
+						name="tools"
+						value={initial.tools
+							.split(',')
+							.map((t) => t.trim())
+							.filter(Boolean)}
+						options={options.tools}
+						describedby={describedBy('tools', TOOLS_HINT)}
+						invalid={hasError('tools')}
+						onchange={markDirty}
+					/>
+					{@render hintAndError('tools', TOOLS_HINT)}
+				</div>
+				<div>
+					<label for="pf-notes" class="label">{FIELD_LABELS.notes}</label>
+					<textarea
+						id="pf-notes"
+						name="notes"
+						rows="4"
+						value={initial.notes}
+						placeholder="Anything the next developer should know"
+						aria-invalid={hasError('notes') || undefined}
+						aria-describedby={describedBy('notes')}
+						class="input"></textarea>
+					{@render hintAndError('notes')}
+				</div>
+			</div>
+		</FormSection>
+	{/key}
+
+	<FormFooter {submitLabel} {submitting} {dirty} oncancel={oncancel ? cancel : undefined} />
 </form>

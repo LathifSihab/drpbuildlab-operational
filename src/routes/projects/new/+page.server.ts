@@ -6,6 +6,7 @@ import {
 	assertUser,
 	auditProject,
 	canEditProjects,
+	ensureTools,
 	loadProjectOptions,
 	projectValues,
 	resolveClient,
@@ -47,8 +48,10 @@ export const actions: Actions = {
 					input.newPartner,
 					true
 				);
-				await assertUser(tx, input.accountManagerId);
-				const row = projectValues(input, clientId, partnerId);
+				await assertUser(tx, input.accountManagerId, 'accountManagerId');
+				await assertUser(tx, input.picId, 'picId');
+				const toolNames = await ensureTools(tx, input.tools);
+				const row = projectValues(input, { clientId, partnerId, tools: toolNames });
 				const [created] = await tx
 					.insert(projects)
 					.values({ ...row, slug: await uniqueSlug(tx, input.title) })

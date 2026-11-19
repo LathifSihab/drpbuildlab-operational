@@ -1,15 +1,16 @@
 import { error, fail, redirect } from '@sveltejs/kit';
-import { and, desc, eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
 import { requireRole } from '#lib/server/auth/users.ts';
 import type { Db } from '#lib/server/db/index.ts';
-import { auditLog, clients, projects, users } from '#lib/server/db/schema.ts';
+import { auditLog, clients, projects, tasks, users } from '#lib/server/db/schema.ts';
 import {
 	assertUser,
 	auditProject,
 	canDeleteProjects,
 	canEditProjects,
+	ensureTools,
 	diffProject,
 	loadProjectOptions,
 	projectValues,
@@ -17,6 +18,17 @@ import {
 	UnknownReferenceError
 } from '#lib/server/projects.ts';
 import { ProjectInput, readProjectForm } from '#lib/schemas/project.ts';
+import {
+	canEditTasks,
+	createTaskAction,
+	deleteTaskAction,
+	listTasks,
+	projectHistoryWhere,
+	setTaskStatusAction,
+	TASK_EDITORS,
+	updateTaskAction
+} from '#lib/server/tasks.ts';
+import { todayUtc } from '#lib/tasks.ts';
 import type { Actions, PageServerLoad } from './$types';
 
 function projectId(raw: string): number {
@@ -33,17 +45,20 @@ async function findProject(db: Db, id: number) {
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const id = projectId(params.id);
 	const partner = alias(clients, 'partner');
+	const pic = alias(users, 'pic');
 	const [row] = await locals.db
 		.select({
 			project: projects,
 			clientName: clients.name,
 			partnerName: partner.name,
-			accountManagerEmail: users.email
+			accountManagerEmail: users.email,
+			picEmail: pic.email
 		})
 		.from(projects)
 		.leftJoin(clients, eq(projects.clientId, clients.id))
 		.leftJoin(partner, eq(projects.partnerId, partner.id))
 		.leftJoin(users, eq(projects.accountManagerId, users.id))
+		.leftJoin(pic, eq(projects.picId, pic.id))
 		.where(eq(projects.id, id))
 		.limit(1);
 
@@ -51,7 +66,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	// Deleted projects are only visible to admins, who can restore them.
 	if (!row || (row.project.deletedAt && !canDelete)) error(404, 'Project not found');
 
-	const [options, history] = await Promise.all([
+	const [options, history, taskRows] = await Promise.all([
 		loadProjectOptions(locals.db),
 		locals.db
 			.select({
@@ -62,9 +77,11 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 				diff: auditLog.diff
 			})
 			.from(auditLog)
-			.where(and(eq(auditLog.entity, 'project'), eq(auditLog.entityId, String(id))))
+			// The project's own changes and its tasks' changes.
+			.where(projectHistoryWhere(id))
 			.orderBy(desc(auditLog.at))
-			.limit(50)
+			.limit(100),
+		listTasks(locals.db, eq(tasks.projectId, id), { includeDeletedProjects: true })
 	]);
 
 	const { techStack: _techStack, ...project } = row.project; // not editable here yet
@@ -73,11 +90,15 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			...project,
 			clientName: row.clientName,
 			partnerName: row.partnerName,
-			accountManagerEmail: row.accountManagerEmail
+			accountManagerEmail: row.accountManagerEmail,
+			picEmail: row.picEmail
 		},
 		options,
 		history,
+		tasks: taskRows,
+		today: todayUtc(),
 		canEdit: canEditProjects(locals.user.role) && !row.project.deletedAt,
+		canEditTasks: canEditTasks(locals.user.role) && !row.project.deletedAt,
 		canDelete
 	};
 };
@@ -112,8 +133,10 @@ export const actions: Actions = {
 					input.newPartner,
 					true
 				);
-				await assertUser(tx, input.accountManagerId);
-				const after = projectValues(input, clientId, partnerId);
+				await assertUser(tx, input.accountManagerId, 'accountManagerId');
+				await assertUser(tx, input.picId, 'picId');
+				const toolNames = await ensureTools(tx, input.tools);
+				const after = projectValues(input, { clientId, partnerId, tools: toolNames });
 				const changes = diffProject(before, after);
 				if (Object.keys(changes).length === 0) return;
 				await tx.update(projects).set(after).where(eq(projects.id, id));
@@ -154,5 +177,26 @@ export const actions: Actions = {
 			});
 		}
 		redirect(303, `/projects/${id}`);
+	},
+
+	// Tasks (PLAN.md Phase 1d). Each returns nothing on success, or `{ taskForm }` on a bad form.
+	addTask: async ({ params, request, locals }) => {
+		const user = requireRole(locals.user, TASK_EDITORS);
+		return createTaskAction(locals.db, user, projectId(params.id), await request.formData());
+	},
+
+	updateTask: async ({ params, request, locals }) => {
+		const user = requireRole(locals.user, TASK_EDITORS);
+		return updateTaskAction(locals.db, user, projectId(params.id), await request.formData());
+	},
+
+	setTaskStatus: async ({ params, request, locals }) => {
+		const user = requireRole(locals.user, TASK_EDITORS);
+		await setTaskStatusAction(locals.db, user, projectId(params.id), await request.formData());
+	},
+
+	deleteTask: async ({ params, request, locals }) => {
+		const user = requireRole(locals.user, TASK_EDITORS);
+		await deleteTaskAction(locals.db, user, projectId(params.id), await request.formData());
 	}
 };

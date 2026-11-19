@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { optionLabel } from '#lib/components/ProjectForm.svelte';
 	import type { PageProps } from './$types';
 
@@ -10,9 +11,8 @@
 	const dateTime = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
 </script>
 
-<div class="flex flex-wrap items-center gap-3">
-	<h1 class="text-xl font-semibold">{data.showDeleted ? 'Deleted projects' : 'Projects'}</h1>
-	<form method="GET" role="search" class="ml-auto flex gap-2">
+{#snippet actions()}
+	<form method="GET" role="search" class="flex gap-2">
 		{#if data.showDeleted}<input type="hidden" name="deleted" value="1" />{/if}
 		<label for="q" class="sr-only">Search projects or clients</label>
 		<input
@@ -21,34 +21,36 @@
 			type="search"
 			value={data.q}
 			placeholder="Search project or client"
-			class="w-56 rounded border border-border bg-card px-2 py-1.5 text-sm"
+			class="input w-64 rounded-full py-2"
 		/>
-		<button class="rounded border border-border px-3 py-1.5 text-sm">Search</button>
+		<button class="btn btn-line">Search</button>
 	</form>
 	{#if data.canSeeDeleted}
-		<a
-			href={data.showDeleted ? resolve('/') : resolve('/?deleted=1')}
-			class="text-sm text-accent hover:underline"
-		>
+		<a href={data.showDeleted ? resolve('/') : resolve('/?deleted=1')} class="btn btn-ghost">
 			{data.showDeleted ? 'Back to projects' : 'Show deleted'}
 		</a>
 	{/if}
 	{#if data.canCreate && !data.showDeleted}
-		<a
-			href={resolve('/projects/new')}
-			class="rounded bg-primary px-3 py-1.5 text-sm font-medium text-on-primary"
-		>
+		<a href={resolve('/projects/new')} class="btn btn-primary">
+			<svg viewBox="0 0 16 16" class="size-3.5" aria-hidden="true"
+				><path
+					d="M8 3v10M3 8h10"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+				/></svg
+			>
 			New project
 		</a>
 	{/if}
-</div>
+{/snippet}
 
-<section aria-labelledby="projects-heading" class="mt-4">
+<PageHeader title={data.showDeleted ? 'Deleted projects' : 'Projects'} {actions} />
+
+<section aria-labelledby="projects-heading">
 	<h2 id="projects-heading" class="sr-only">Project list</h2>
 	{#if data.projects.length === 0}
-		<p
-			class="rounded border border-dashed border-border bg-card px-4 py-8 text-center text-muted-foreground"
-		>
+		<p class="card border-dashed px-4 py-12 text-center text-muted-foreground">
 			{#if data.q}
 				No projects match “{data.q}”.
 			{:else if data.showDeleted}
@@ -58,47 +60,55 @@
 			{/if}
 		</p>
 	{:else}
-		<div class="overflow-x-auto rounded border border-border bg-card">
-			<table class="w-full text-left text-sm">
-				<thead class="border-b border-border text-muted-foreground">
+		<div class="card overflow-x-auto">
+			<table class="data-table">
+				<thead>
 					<tr>
-						<th scope="col" class="px-3 py-2 font-medium">Project</th>
-						<th scope="col" class="px-3 py-2 font-medium">Client</th>
-						<th scope="col" class="px-3 py-2 font-medium">Phase</th>
-						<th scope="col" class="px-3 py-2 font-medium">Platform</th>
-						<th scope="col" class="px-3 py-2 font-medium">Updated</th>
+						<th scope="col">Project</th>
+						<th scope="col">Client</th>
+						<th scope="col"><abbr title="Person in charge" class="no-underline">PIC</abbr></th>
+						<th scope="col">Phase</th>
+						<th scope="col">Platform</th>
+						<th scope="col">Updated</th>
 					</tr>
 				</thead>
 				<tbody>
 					{#each data.projects as project (project.id)}
-						<tr class="border-b border-border last:border-0">
-							<td class="px-3 py-2 font-medium">
+						<tr>
+							<td class="font-medium">
 								<a
 									href={resolve('/projects/[id]', { id: String(project.id) })}
-									class="text-accent hover:underline"
+									class="hover:text-accent hover:underline"
 								>
 									{project.title}
 								</a>
 							</td>
-							<td class="px-3 py-2">{project.client ?? '–'}</td>
-							<td class="px-3 py-2">{optionLabel(project.phase)}</td>
-							<td class="px-3 py-2">{optionLabel(project.platform)}</td>
-							<td class="px-3 py-2 text-muted-foreground">{dateTime.format(project.updatedAt)}</td>
+							<td>{project.client ?? '–'}</td>
+							<td class="text-muted-foreground">{project.picName ?? project.picEmail ?? '–'}</td>
+							<td><span class="badge">{optionLabel(project.phase)}</span></td>
+							<td class="text-muted-foreground">{optionLabel(project.platform)}</td>
+							<td class="text-muted-foreground">{dateTime.format(project.updatedAt)}</td>
 						</tr>
 					{/each}
 				</tbody>
 			</table>
 		</div>
+		<p class="mt-2 text-[13px] text-muted-foreground">
+			{data.projects.length}
+			{data.projects.length === 1 ? 'project' : 'projects'}
+		</p>
 	{/if}
 </section>
 
-<section aria-labelledby="system-heading" class="mt-10 rounded border border-border bg-card p-4">
-	<h2 id="system-heading" class="font-semibold">System check</h2>
-	<p class="mt-1 text-sm text-muted-foreground">
-		The hello-world task runs on Trigger.dev and writes a row to the database.
-	</p>
-
-	{#if data.canRunTasks}
+<!-- Trigger.dev check: part of Phase 2 now (docs/PLAN.md), so folded away. -->
+{#if data.canRunTasks}
+	<details class="card mt-10 p-4 text-sm">
+		<summary class="cursor-pointer font-medium text-muted-foreground">
+			System check (Trigger.dev, Phase 2)
+		</summary>
+		<p class="mt-2 text-muted-foreground">
+			The hello-world task runs on Trigger.dev and writes a row to the database.
+		</p>
 		<form
 			method="POST"
 			action="?/helloWorld"
@@ -111,34 +121,29 @@
 				};
 			}}
 		>
-			<button
-				class="rounded bg-primary px-3 py-1.5 text-sm font-medium text-on-primary disabled:opacity-60"
-				disabled={running}
-			>
+			<button class="btn btn-line btn-sm" disabled={running}>
 				{running ? 'Starting…' : 'Run hello-world task'}
 			</button>
 		</form>
-	{/if}
-
-	<div aria-live="polite" class="mt-2 text-sm">
-		{#if form?.error}
-			<p class="text-destructive">{form.error}</p>
-		{:else if form?.triggeredRunId}
-			<p>Task started (run {form.triggeredRunId}). Reload in a few seconds to see its row.</p>
+		<div aria-live="polite" class="mt-2">
+			{#if form?.error}
+				<p class="text-destructive">{form.error}</p>
+			{:else if form?.triggeredRunId}
+				<p>Task started (run {form.triggeredRunId}). Reload in a few seconds to see its row.</p>
+			{/if}
+		</div>
+		<h3 class="mt-4 font-medium">Latest task rows</h3>
+		{#if data.taskRuns.length === 0}
+			<p class="text-muted-foreground">None yet.</p>
+		{:else}
+			<ul class="mt-1 space-y-1">
+				{#each data.taskRuns as run (run.id)}
+					<li>
+						<time datetime={run.at.toISOString()}>{dateTime.format(run.at)}</time>
+						<span class="text-muted-foreground">· {run.actor}</span>
+					</li>
+				{/each}
+			</ul>
 		{/if}
-	</div>
-
-	<h3 class="mt-4 text-sm font-medium">Latest task rows</h3>
-	{#if data.taskRuns.length === 0}
-		<p class="text-sm text-muted-foreground">None yet.</p>
-	{:else}
-		<ul class="mt-1 space-y-1 text-sm">
-			{#each data.taskRuns as run (run.id)}
-				<li>
-					<time datetime={run.at.toISOString()}>{dateTime.format(run.at)}</time>
-					<span class="text-muted-foreground">· {run.actor}</span>
-				</li>
-			{/each}
-		</ul>
-	{/if}
-</section>
+	</details>
+{/if}

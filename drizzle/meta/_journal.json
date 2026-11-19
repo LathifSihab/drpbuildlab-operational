@@ -15,6 +15,13 @@
       "when": 1794814672086,
       "tag": "0001_pink_brood",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795095698540,
+      "tag": "0002_noisy_swarm",
+      "breakpoints": true
     }
   ]
 }

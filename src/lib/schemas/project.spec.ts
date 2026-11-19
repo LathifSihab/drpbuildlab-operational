@@ -47,6 +47,12 @@ describe('ProjectInput', () => {
 		expect(ProjectInput.safeParse(form({ title: 'x', clientId: '-1' })).success).toBe(false);
 	});
 
+	it('reads the PIC as an optional user id', () => {
+		expect(ProjectInput.parse(form({ title: 'x' })).picId).toBeNull();
+		expect(ProjectInput.parse(form({ title: 'x', picId: '3' })).picId).toBe(3);
+		expect(ProjectInput.safeParse(form({ title: 'x', picId: 'me' })).success).toBe(false);
+	});
+
 	it('rejects unknown phases and platforms', () => {
 		expect(ProjectInput.safeParse(form({ title: 'x', phase: 'shipped' })).success).toBe(false);
 		expect(ProjectInput.safeParse(form({ title: 'x', platform: 'joomla' })).success).toBe(false);

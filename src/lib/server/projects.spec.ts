@@ -17,6 +17,7 @@ describe('diffProject', () => {
 		clientId: 1,
 		partnerId: null,
 		accountManagerId: null,
+		picId: null,
 		phase: 'lead',
 		platform: 'unknown',
 		platformDetail: null,
@@ -41,6 +42,11 @@ describe('diffProject', () => {
 			title: { from: 'Old', to: 'New' },
 			phase: { from: 'lead', to: 'build' }
 		});
+	});
+
+	it('records a PIC change', () => {
+		const after = { ...before, picId: 4 } as unknown as ProjectValues;
+		expect(diffProject(before, after)).toEqual({ picId: { from: null, to: 4 } });
 	});
 
 	it('is empty when nothing changed', () => {

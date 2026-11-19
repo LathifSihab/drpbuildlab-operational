@@ -1,8 +1,8 @@
-import { and, asc, eq, like, or, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, like, or, sql } from 'drizzle-orm';
 import { PLATFORMS, PROJECT_PHASES, type ProjectInput } from '../schemas/project.ts';
 import { auditClient } from './clients.ts';
 import type { Db } from './db/index.ts';
-import { auditLog, clients, projects, users, type Project, type Role } from './db/schema.ts';
+import { auditLog, clients, projects, tools, users, type Project, type Role } from './db/schema.ts';
 
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 type DbOrTx = Db | Tx;
@@ -13,7 +13,7 @@ export const canEditProjects = (role: Role) =>
 export const canDeleteProjects = (role: Role) => role === 'admin';
 
 export async function loadProjectOptions(db: Db) {
-	const [allClients, allUsers] = await Promise.all([
+	const [allClients, allUsers, allTools] = await Promise.all([
 		db
 			.select({ id: clients.id, name: clients.name, isPartner: clients.isPartner })
 			.from(clients)
@@ -21,12 +21,17 @@ export async function loadProjectOptions(db: Db) {
 		db
 			.select({ id: users.id, email: users.email, name: users.name })
 			.from(users)
-			.orderBy(asc(users.email))
+			.orderBy(asc(users.email)),
+		db
+			.select({ name: tools.name })
+			.from(tools)
+			.orderBy(asc(sql`lower(${tools.name})`))
 	]);
 	return {
 		clients: allClients.filter((c) => !c.isPartner).map(({ id, name }) => ({ id, name })),
 		partners: allClients.filter((c) => c.isPartner).map(({ id, name }) => ({ id, name })),
 		users: allUsers,
+		tools: allTools.map((t) => t.name),
 		phases: PROJECT_PHASES,
 		platforms: PLATFORMS
 	};
@@ -98,33 +103,68 @@ export async function resolveClient(
 	return found.id;
 }
 
-export async function assertUser(db: DbOrTx, userId: number | null): Promise<void> {
+export async function assertUser(
+	db: DbOrTx,
+	userId: number | null,
+	field: 'accountManagerId' | 'picId' | 'assigneeId'
+): Promise<void> {
 	if (userId === null) return;
 	const [found] = await db
 		.select({ id: users.id })
 		.from(users)
 		.where(eq(users.id, userId))
 		.limit(1);
-	if (!found) throw new UnknownReferenceError('accountManagerId');
+	if (!found) throw new UnknownReferenceError(field);
 }
 
 export class UnknownReferenceError extends Error {
-	constructor(readonly field: 'clientId' | 'partnerId' | 'accountManagerId') {
+	constructor(
+		readonly field: 'clientId' | 'partnerId' | 'accountManagerId' | 'picId' | 'assigneeId'
+	) {
 		super(`unknown ${field}`);
 	}
+}
+
+/**
+ * Adds tools not yet in the shared list and returns the names as the list spells them, so
+ * "klaviyo" typed on a form is saved as the existing "Klaviyo".
+ */
+export async function ensureTools(db: DbOrTx, names: string[]): Promise<string[]> {
+	if (names.length === 0) return [];
+	const lowered = [...new Set(names.map((n) => n.toLowerCase()))];
+	const findKnown = async () =>
+		new Map(
+			(
+				await db
+					.select({ name: tools.name })
+					.from(tools)
+					.where(inArray(sql`lower(${tools.name})`, lowered))
+			).map((t) => [t.name.toLowerCase(), t.name])
+		);
+	let known = await findKnown();
+	const missing = names.filter((n) => !known.has(n.toLowerCase()));
+	if (missing.length) {
+		// Another save may add the same name at the same moment; the unique index settles it.
+		await db
+			.insert(tools)
+			.values(missing.map((name) => ({ name })))
+			.onConflictDoNothing();
+		known = await findKnown();
+	}
+	return [...new Set(names.map((n) => known.get(n.toLowerCase()) ?? n))];
 }
 
 /** The columns a person can set through the form. */
 export function projectValues(
 	input: ProjectInput,
-	clientId: number | null,
-	partnerId: number | null
+	resolved: { clientId: number | null; partnerId: number | null; tools: string[] }
 ) {
 	return {
 		title: input.title,
-		clientId,
-		partnerId,
+		clientId: resolved.clientId,
+		partnerId: resolved.partnerId,
 		accountManagerId: input.accountManagerId,
+		picId: input.picId,
 		phase: input.phase,
 		platform: input.platform,
 		platformDetail: input.platformDetail,
@@ -134,7 +174,7 @@ export function projectValues(
 		productionUrl: input.productionUrl,
 		repoUrl: input.repoUrl,
 		domainRegistrar: input.domainRegistrar,
-		tools: input.tools,
+		tools: resolved.tools,
 		notes: input.notes
 	};
 }

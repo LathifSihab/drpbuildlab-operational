@@ -66,15 +66,15 @@ One project with branches `main`, `staging`, `dev`. Run Drizzle migrations from 
 
 Create the project, link it in `trigger.config.ts`, and set the env vars from `.env.example` in the staging and production environments. Tasks connect to Neon directly with the branch's connection string.
 
-## Anthropic
+## AI provider (SumoPod for now)
 
-API key per environment in Trigger.dev env vars. Before sending real client emails, resolve the data-handling question in OPEN_QUESTIONS.md.
+API key per environment in Trigger.dev env vars (OPEN_QUESTIONS #28). Before sending real client emails, resolve the data-handling question in OPEN_QUESTIONS.md.
 
 ## GitHub
 
 1. Template repo `drp-sveltekit-template` with base `CLAUDE.md`, `docs/`, and `.mcp.json` (Svelte, Playwright, Context7 MCP servers).
 2. Now (personal account): a token limited to creating repositories and writing contents on that account, stored only in Trigger.dev env vars (`GITHUB_TOKEN`).
-3. Once DRP has an organization (OPEN_QUESTIONS #12): move the template there, switch to a GitHub App installed on the org (`GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`), set `GITHUB_OWNER` to the org, and revoke the personal token.
+3. Repos stay on the personal account (OPEN_QUESTIONS #12). Only if DRP later creates an organization: move the template there, switch to a GitHub App installed on the org (`GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`), set `GITHUB_OWNER` to the org, and revoke the personal token.
 
 ## Secrets manager
 

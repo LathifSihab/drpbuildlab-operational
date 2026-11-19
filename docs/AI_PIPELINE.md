@@ -1,6 +1,6 @@
 # AI Pipeline
 
-Model and keys come from env (`ANTHROPIC_MODEL`, default `claude-sonnet-5-5`). All calls use `@anthropic-ai/sdk` inside Trigger.dev tasks.
+Provider: SumoPod first (OPEN_QUESTIONS #28), through its OpenAI-compatible API. Model and keys come from env; the env names and SDK are settled in Phase 3 (until then `.env.example` still lists `ANTHROPIC_API_KEY` / `ANTHROPIC_MODEL`). All model calls run inside Trigger.dev tasks.
 
 The unit of work is a **request**: one intake conversation. A request is either new work (a new build, a rebuild, or a demo) that becomes its own project with a project pack, or a smaller job on an existing client's site (a change, integration, platform configuration, bug fix, or maintenance) that becomes a task on that client's project. See ARCHITECTURE.md for the data model.
 

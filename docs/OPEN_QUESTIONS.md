@@ -6,17 +6,13 @@ Each has a suggested answer. Confirm or correct, then move it to "Answered" with
 
 | # | Type | Question | Suggested answer | Blocks |
 |---|---|---|---|---|
-| 1 | business | The AI only reads emails and never replies to clients. But to read them, the email text is sent to Anthropic's API for processing. Do our client agreements and NDAs allow client email content to be processed by a third-party AI service? | Check each active agreement; add an AI-processing clause to new contracts; use anonymized samples until confirmed | Phase 3 with real client emails |
+| 1 | business | The AI only reads emails and never replies to clients. But to read them, the email text is sent to the AI provider (SumoPod for now, see #28, which passes it on to the model's maker). Do our client agreements and NDAs allow client email content to be processed by a third-party AI service? | Check each active agreement; add an AI-processing clause to new contracts; use anonymized samples until confirmed | Phase 3 with real client emails |
 
 ## Non-blocking
 
 | # | Type | Question | Suggested answer |
 |---|---|---|---|
-| 11 | technical | Which mailbox do we use for staging tests? | A free shared mailbox `projects-staging@drpbuildlab.com` with anonymized samples (fits #9). A personal mailbox would feed every email in it into the pipeline and give the app access to all of it. |
-| 12 | technical | Create a free GitHub organization for DRP now, before Phase 4? | Yes: generated project repos go straight into the org, so nothing has to be transferred later |
 | 13 | technical (developer check, no owner decision needed) | Microsoft gives two versions of an email's text: the full text, or "only the new part" (`uniqueBody`, without the quoted earlier emails). For a forward, the client's brief *is* the quoted part. Does "only the new part" keep it or drop it? | Always read the full text for the first email of a conversation and "only the new part" for replies. Confirm with one test forward in Phase 2 |
-| 23 | technical | Flagged `[SECRET]` emails stay in the intake mailbox, because the app can only read it (`Mail.Read`). Allow the app to delete them once filed? | Yes: give the app `Mail.ReadWrite` on the intake mailbox only, and delete a `[SECRET]` email when it is marked done. Until then, someone deletes it by hand |
-| 24 | technical | Gateway token for staff: in the URL (as asked) or in a cookie/header? | Cookie/header from Cloudflare Access, checked by every app. A URL token leaks via history, logs, Referer, and forwarding and cannot be logged out (INTERNAL_GATEWAY.md). URL links stay only for clients and partners |
 | 25 | technical | Which client zone paths are for clients, partners, and webhooks (Access Bypass) and which are staff-only? | Read from the client zone code before go-live: `/admin*` staff; quote/payment links, partner pages, `/webhooks/*` bypass |
 | 26 | business | Partners: keep signed links, or give them their own login? | Keep signed links for now; revisit when partners need to see history across many quotes |
 
@@ -43,3 +39,8 @@ Each has a suggested answer. Confirm or correct, then move it to "Answered" with
 | 21 | Pre-sale work on the kanban | Add `lead` and `proposal` phases before discovery, and `lost` beside closed | Owner | 2026-11-12 |
 | 22 | Emails with secret information | Business team flags them with `[SECRET]` at the start of the subject; they skip the AI and are filed as named keys in the project's ".env" (Infisical) | Owner | 2026-11-12 |
 | 27 | Domain for internal apps: move `drpbuildlab.com` DNS to Cloudflare, or a separate domain? | Separate domain (`drpbuildlab.dev`, confirm at purchase) on Cloudflare; `drpbuildlab.com` website and email untouched | Owner | 2026-11-14 |
+| 11 | Which mailbox for staging tests? | The owner's own mailbox. Condition: the app reads only one folder (`DRP Intake`), which the owner fills by hand or by an Outlook rule; nothing else in the mailbox is read. Staging still gets anonymized or own test emails only (#9) | Owner | 2026-11-16 |
+| 12 | GitHub organization for DRP? | No: project repos stay on the personal GitHub account | Owner | 2026-11-16 |
+| 23 | Let the app delete `[SECRET]` emails once filed? | Yes: `Mail.ReadWrite`, used only to delete a `[SECRET]` email when it is marked done | Owner | 2026-11-16 |
+| 24 | Gateway token for staff: URL or cookie/header? | Cookie/header from Cloudflare Access, checked by every app; no token in URLs for staff | Owner | 2026-11-16 |
+| 28 | Which AI provider? | SumoPod first (OpenAI-compatible API at `ai.sumopod.com/v1`); the model is picked from its list in Phase 3. The pipeline's checks (Zod, citations, secret scan) stay the same | Owner | 2026-11-16 |

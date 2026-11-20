@@ -14,7 +14,7 @@ Scripts live in `package.json`; read them there.
 - `trigger/` holds Trigger.dev tasks (Node runtime). Every Microsoft Graph call and every Claude call lives here.
 - `src/lib/server/db/` holds the Drizzle schema, shared by the app and the tasks.
 - `src/lib/schemas/` holds Zod schemas; JSON Schemas for the model are generated from them, never hand-written.
-- SvelteKit 3: import from `src/lib` with `#lib/...` and the file extension (`#lib/server/db/index.ts`); `$lib` no longer exists. Env vars are declared in `src/env.ts` and imported from `$app/env/private`. Cloudflare bindings come from `event.platform.env`.
+- SvelteKit 3: import from `src/lib` with `#lib/...` and the file extension (`#lib/server/db/index.ts`); `$lib` no longer exists. Env vars are declared in `src/env.ts` and imported from `$app/env/private`. Cloudflare bindings come from `import { env } from 'cloudflare:workers'` (adapter-cloudflare 8 no longer sets `event.platform`).
 - The app triggers tasks through the Trigger.dev REST API (`src/lib/server/trigger.ts`), not the Node SDK.
 
 ## Rules

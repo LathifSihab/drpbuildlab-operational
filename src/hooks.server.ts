@@ -1,5 +1,8 @@
 import { error } from '@sveltejs/kit';
 import type { Handle } from '@sveltejs/kit/hooks';
+// adapter-cloudflare 8 no longer passes bindings as `event.platform`; they come from this
+// module (in `vite dev` the adapter provides it, without Hyperdrive, so DATABASE_URL is used).
+import { env, waitUntil } from 'cloudflare:workers';
 import { dev } from '$app/env';
 import {
 	BOOTSTRAP_ADMIN_EMAIL,
@@ -38,7 +41,7 @@ async function identify(request: Request): Promise<string> {
 export const handle: Handle = async ({ event, resolve }) => {
 	const email = await identify(event.request);
 
-	const hyperdrive = event.platform?.env.HYPERDRIVE;
+	const hyperdrive = env.HYPERDRIVE as Hyperdrive | undefined;
 	let close: (() => Promise<void>) | undefined;
 	if (hyperdrive) {
 		const conn = createDb(hyperdrive.connectionString);
@@ -54,6 +57,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 		event.locals.user = await getOrCreateUser(event.locals.db, email, BOOTSTRAP_ADMIN_EMAIL);
 		return await resolve(event);
 	} finally {
-		if (close) event.platform?.ctx.waitUntil(close());
+		if (close) waitUntil(close());
 	}
 };

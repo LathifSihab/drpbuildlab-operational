@@ -16,6 +16,8 @@ Internal apps move to a **separate domain, `drpbuildlab.dev`**, registered on Cl
 
 Staging stays on its free address: `https://drp-operational-staging.goosebumpsevents.workers.dev`, behind the same Access login.
 
+Until `drpbuildlab.dev` is bought, DRP Operational production also runs on a free address, `https://drp-operational.goosebumpsevents.workers.dev`, behind Access (decided 2026-11-20 to avoid the domain cost for now). Moving it later is a config change (`wrangler.jsonc`, production) plus a new Access application; no data moves.
+
 ## Flow
 
 ```mermaid

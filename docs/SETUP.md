@@ -30,8 +30,9 @@ To renew: create the new token, run `gh secret set <NAME> --env staging --repo L
 
 | | Local | Staging | Production |
 |---|---|---|---|
-| App | `vite dev` | https://drp-operational-staging.goosebumpsevents.workers.dev (no custom domain yet), behind Access | `operational.drpbuildlab.dev` on Workers, behind Access |
-| Database | Neon `dev` branch | Neon `staging` branch | Neon `main` branch |
+| App | `vite dev` | https://drp-operational-staging.goosebumpsevents.workers.dev (no custom domain yet), behind Access | https://drp-operational.goosebumpsevents.workers.dev (free address until `drpbuildlab.dev` is bought, INTERNAL_GATEWAY.md), behind Access |
+| Database | Neon `dev` branch (`DATABASE_URL` in `.env`) | Neon `staging` branch (`DATABASE_URL_STAGING` in `.env`, for reading only; never test against it) | Neon `production` branch (empty at start, migrated by CI) |
+| Deploy | | CI, on every push to `main` | CI, only from Actions -> CI -> **Run workflow** on `main`, after the owner approves the `production` environment. Secrets: `PRODUCTION_DATABASE_URL`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` |
 | Trigger.dev | Development environment (`npm run trigger:dev`) | For now also the Development environment: tasks run only while a developer runs `npm run trigger:dev` (our plan has no Staging environment; not deployed by CI) | Production environment, deployed by CI |
 | Intake mailbox | Fixtures only | `projects-staging@drpbuildlab.com` with anonymized samples | `projects@drpbuildlab.com` |
 | Secrets | `.dev.vars` / `.env` (git-ignored) | Cloudflare + Trigger.dev env vars | Cloudflare + Trigger.dev env vars |

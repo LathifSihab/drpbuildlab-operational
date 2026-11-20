@@ -23,10 +23,13 @@
 			"vars": { "APP_ENV": "staging" }
 		},
 		"production": {
-			"name": "drp-operational-production",
-			"workers_dev": false,
+			// Free address for now: https://drp-operational.goosebumpsevents.workers.dev, behind
+			// Cloudflare Access. Moves to operational.drpbuildlab.dev once that domain is bought
+			// (docs/INTERNAL_GATEWAY.md): set workers_dev false and add
+			// "routes": [{ "pattern": "operational.drpbuildlab.dev", "custom_domain": true }].
+			"name": "drp-operational",
+			"workers_dev": true,
 			"preview_urls": false,
-			"routes": [{ "pattern": "operational.drpbuildlab.dev", "custom_domain": true }],
 			"hyperdrive": [{ "binding": "HYPERDRIVE", "id": "REPLACE_WITH_PRODUCTION_HYPERDRIVE_ID" }],
 			"r2_buckets": [{ "binding": "FILES", "bucket_name": "drp-ops-prod" }],
 			"vars": { "APP_ENV": "production" }

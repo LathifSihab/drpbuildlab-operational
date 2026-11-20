@@ -4,10 +4,14 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Production deploys only from this button (Actions -> CI -> Run workflow on main), and the
+  # `production` environment asks for approval before the job starts.
+  workflow_dispatch:
 
+# Runs on main queue instead of cancelling each other, so a deploy is never stopped mid-migration.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
@@ -49,3 +53,27 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       # Tasks are not deployed yet: staging uses the Trigger.dev Development environment,
       # whose tasks run on a developer's machine via `npm run trigger:dev` (docs/SETUP.md).
+
+  deploy-production:
+    needs: check
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Migrate production database (Neon production branch)
+        run: npm run db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      - name: Build
+        run: npm run build
+      - name: Deploy app to Cloudflare Workers (production)
+        run: npx wrangler deploy --env production
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

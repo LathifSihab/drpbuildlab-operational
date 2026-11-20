@@ -1,5 +1,6 @@
 <script lang="ts">
 	import '../app.css';
+	import { dev } from '$app/env';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import favicon from '#lib/assets/favicon.svg';
@@ -72,12 +73,25 @@
 			</ul>
 		</nav>
 
-		<p class="ml-auto flex items-center gap-2.5 text-[13px] text-on-ink-muted">
+		<div class="ml-auto flex items-center gap-2.5 text-[13px] text-on-ink-muted">
 			<span class="hidden truncate sm:inline">{data.user.email}</span>
 			<span class="rounded-full px-2.5 py-0.5 text-xs font-medium text-on-ink ring-1 ring-white/25">
 				{data.user.role}
 			</span>
-		</p>
+			{#if !dev}
+				<!-- Cloudflare Access's own logout page: ends the sign-in session; the next visit asks
+				     for Microsoft again. A full page load, so the app's router does not handle it. -->
+				<!-- eslint-disable svelte/no-navigation-without-resolve -- served by Cloudflare, not a route of this app -->
+				<a
+					href="/cdn-cgi/access/logout"
+					data-sveltekit-reload
+					class="rounded-full px-2.5 py-0.5 font-medium transition-colors hover:bg-white/10 hover:text-on-ink"
+				>
+					Sign out
+				</a>
+				<!-- eslint-enable svelte/no-navigation-without-resolve -->
+			{/if}
+		</div>
 	</div>
 </header>
 

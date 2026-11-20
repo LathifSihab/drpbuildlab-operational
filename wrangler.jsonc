@@ -30,7 +30,7 @@
 			"name": "drp-operational",
 			"workers_dev": true,
 			"preview_urls": false,
-			"hyperdrive": [{ "binding": "HYPERDRIVE", "id": "REPLACE_WITH_PRODUCTION_HYPERDRIVE_ID" }],
+			"hyperdrive": [{ "binding": "HYPERDRIVE", "id": "8b76ec87586648e782710566de1afd5b" }],
 			"r2_buckets": [{ "binding": "FILES", "bucket_name": "drp-ops-prod" }],
 			"vars": { "APP_ENV": "production" }
 		}

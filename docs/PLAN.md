@@ -53,7 +53,7 @@ The team can manage projects by hand before intake exists (and fix anything inta
 ## Phase 1d: Tasks on a project
 
 - New `tasks` table: project, title, type (enhancement, revision, bug fix, integration, platform config, maintenance, other), description, status (`todo` / `in_progress` / `done`), assignee, due date, and request (empty for now; Phase 4 fills it from approved requests). ARCHITECTURE.md updated: tasks replace `requests.work_status`.
-- Task list on the project page: add, edit, change status (Start / Mark done / Reopen), delete. A "My tasks" page across projects, with an "Everyone" view.
+- Task list on the project page: add, edit, change status (Start / Mark done / Reopen), delete. A "My tasks" page across projects, with an "Everyone" view; every team member can add a task there too (project required, assigned to themselves unless they pick someone else).
 - Every change writes `audit_log`.
 
 **Done when**: on staging, a developer adds a task to a project, assigns it, and moves it to done, and it shows in "My tasks" and in the project's history.

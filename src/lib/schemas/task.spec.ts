@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readTaskForm, TASK_FIELDS, TaskInput } from './task.ts';
+import { readTaskForm, TASK_FIELDS, TaskInput, TaskProjectId } from './task.ts';
 
 const base = Object.fromEntries(TASK_FIELDS.map((f) => [f, ''])) as Record<string, string>;
 const form = (over: Record<string, string>) => ({ ...base, type: 'enhancement', ...over });
@@ -52,5 +52,14 @@ describe('readTaskForm', () => {
 		expect(r.title).toBe('A');
 		expect(r.status).toBe('');
 		expect('projectId' in r).toBe(false);
+	});
+});
+
+describe('TaskProjectId', () => {
+	it('reads a picked project and refuses an empty or bad pick', () => {
+		expect(TaskProjectId.parse('12')).toBe(12);
+		for (const bad of ['', '0', '-3', 'abc', null]) {
+			expect(TaskProjectId.safeParse(bad).success).toBe(false);
+		}
 	});
 });

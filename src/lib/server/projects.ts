@@ -122,7 +122,8 @@ export async function assertUser(
 
 export class UnknownReferenceError extends Error {
 	constructor(
-		readonly field: 'clientId' | 'partnerId' | 'accountManagerId' | 'picId' | 'assigneeId'
+		readonly field:
+			'clientId' | 'partnerId' | 'accountManagerId' | 'picId' | 'assigneeId' | 'projectId'
 	) {
 		super(`unknown ${field}`);
 	}

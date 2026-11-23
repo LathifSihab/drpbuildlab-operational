@@ -14,7 +14,11 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
-	import TaskForm, { type TaskFormFailure, type TaskUser } from '#lib/components/TaskForm.svelte';
+	import TaskForm, {
+		type TaskFormFailure,
+		type TaskProject,
+		type TaskUser
+	} from '#lib/components/TaskForm.svelte';
 	import { userLabel } from '#lib/components/ProjectForm.svelte';
 	import {
 		formatDueDate,
@@ -28,6 +32,7 @@
 	/**
 	 * A project's tasks, or "My tasks" across projects. Status buttons post to `?/setTaskStatus`;
 	 * with `canManage`, add / edit / delete post to `?/addTask`, `?/updateTask`, `?/deleteTask`.
+	 * With `canAdd` alone ("My tasks"), only add, with a project picker from `projects`.
 	 */
 	type Props = {
 		tasks: readonly TaskListItem[];
@@ -37,6 +42,12 @@
 		canChangeStatus: boolean;
 		/** Add, edit, and delete (the project page). */
 		canManage?: boolean;
+		/** Add only; defaults to `canManage`. */
+		canAdd?: boolean;
+		/** Projects for the add form's picker ("My tasks"); the project page leaves it out. */
+		projects?: readonly TaskProject[];
+		/** The assignee a new task starts with. */
+		defaultAssigneeId?: number;
 		/** Show each task's project ("My tasks"). */
 		showProject?: boolean;
 		/** The last failed task form, so it opens again with its errors. */
@@ -50,6 +61,9 @@
 		today,
 		canChangeStatus,
 		canManage = false,
+		canAdd = canManage,
+		projects,
+		defaultAssigneeId,
 		showProject = false,
 		failure,
 		emptyText
@@ -173,12 +187,14 @@
 	</li>
 {/snippet}
 
-{#if canManage}
+{#if canAdd}
 	{#if openForm === 'new'}
 		<div class="mb-4">
 			<h3 class="sr-only">New task</h3>
 			<TaskForm
 				{users}
+				{projects}
+				{defaultAssigneeId}
 				failure={failureFor('new')}
 				action="?/addTask"
 				onclose={() => (openForm = null)}

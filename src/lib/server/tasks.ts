@@ -5,6 +5,7 @@ import {
 	readTaskForm,
 	TaskId,
 	TaskInput,
+	TaskProjectId,
 	TaskStatusInput,
 	type TaskField
 } from '../schemas/task.ts';
@@ -19,13 +20,16 @@ type DbOrTx = Db | Tx;
 export const TASK_EDITORS = ['admin', 'dev', 'business'] as const satisfies readonly Role[];
 export const canEditTasks = (role: Role) => (TASK_EDITORS as readonly Role[]).includes(role);
 
+/** A task form field, plus the project picker of the "My tasks" add form. */
+type FormField = TaskField | 'projectId';
+
 /** A failed task form, kept apart from the project form's `errors` on the project page. */
 export type TaskFormResult = {
 	taskForm: {
 		/** null for the "add task" form. */
 		taskId: number | null;
-		errors: Partial<Record<TaskField, string[]>>;
-		values: Record<TaskField, string>;
+		errors: Partial<Record<FormField, string[]>>;
+		values: Partial<Record<FormField, string>>;
 	};
 };
 
@@ -139,31 +143,66 @@ function readTaskId(data: FormData): number {
 
 function invalid(
 	taskId: number | null,
-	errors: Partial<Record<TaskField, string[]>>,
-	values: Record<TaskField, string>
+	errors: Partial<Record<FormField, string[]>>,
+	values: Partial<Record<FormField, string>>
 ) {
 	return fail(400, { taskForm: { taskId, errors, values } } satisfies TaskFormResult);
 }
 
-/** Form action: add a task to a project. */
-export async function createTaskAction(db: Db, user: User, projectId: number, data: FormData) {
-	const values = readTaskForm(data);
+/**
+ * A project picked on a form: it must exist and not be deleted. Unlike assertOpenProject, a bad
+ * pick is a field error on the form, not an error page.
+ */
+async function assertPickedProject(db: DbOrTx, projectId: number) {
+	const [project] = await db
+		.select({ id: projects.id })
+		.from(projects)
+		.where(and(eq(projects.id, projectId), isNull(projects.deletedAt)))
+		.limit(1);
+	if (!project) throw new UnknownReferenceError('projectId');
+}
+
+/**
+ * Form action: add a task to a project. projectId null = the form picks the project ("My
+ * tasks"), so anyone who edits tasks can add one there without opening the project first.
+ */
+export async function createTaskAction(
+	db: Db,
+	user: User,
+	projectId: number | null,
+	data: FormData
+) {
+	const fromForm = projectId === null;
+	const sentProject = data.get('projectId');
+	const values: Partial<Record<FormField, string>> = {
+		...readTaskForm(data),
+		...(fromForm && { projectId: typeof sentProject === 'string' ? sentProject : '' })
+	};
 	const parsed = TaskInput.safeParse(values);
-	if (!parsed.success) return invalid(null, z.flattenError(parsed.error).fieldErrors, values);
+	const picked = fromForm ? TaskProjectId.safeParse(sentProject) : undefined;
+	if (!parsed.success || picked?.success === false) {
+		const errors: Partial<Record<FormField, string[]>> = parsed.success
+			? {}
+			: z.flattenError(parsed.error).fieldErrors;
+		if (picked && !picked.success) errors.projectId = ['Pick a project'];
+		return invalid(null, errors, values);
+	}
+	const target = picked?.data ?? (projectId as number);
 	try {
 		await db.transaction(async (tx) => {
-			await assertOpenProject(tx, projectId);
+			if (fromForm) await assertPickedProject(tx, target);
+			else await assertOpenProject(tx, target);
 			await assertUser(tx, parsed.data.assigneeId, 'assigneeId');
 			const row = taskValues(parsed.data);
 			const [created] = await tx
 				.insert(tasks)
-				.values({ ...row, projectId })
+				.values({ ...row, projectId: target })
 				.returning({ id: tasks.id });
 			await auditTask(
 				tx,
 				user.email,
 				'task.created',
-				{ id: created.id, projectId, title: row.title },
+				{ id: created.id, projectId: target, title: row.title },
 				{
 					type: row.type,
 					status: row.status,
@@ -174,7 +213,7 @@ export async function createTaskAction(db: Db, user: User, projectId: number, da
 		});
 	} catch (e) {
 		if (e instanceof UnknownReferenceError) {
-			return invalid(null, { assigneeId: ['No longer exists; pick another'] }, values);
+			return invalid(null, { [e.field]: ['No longer exists; pick another'] }, values);
 		}
 		throw e;
 	}

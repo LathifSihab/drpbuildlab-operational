@@ -3,6 +3,9 @@
 
 	export type TaskUser = { id: number; email: string; name: string | null };
 
+	/** A project the "My tasks" add form can put a task on. */
+	export type TaskProject = { id: number; title: string };
+
 	/** The task columns this form edits. */
 	export type EditableTask = {
 		id: number;
@@ -33,22 +36,28 @@
 		/** Omitted for a new task. */
 		task?: EditableTask;
 		users: readonly TaskUser[];
+		/** Shows a required project picker (a new task on "My tasks"). */
+		projects?: readonly TaskProject[];
+		/** The assignee a new task starts with. */
+		defaultAssigneeId?: number;
 		/** The last failed save of this form, if any. */
 		failure?: TaskFormFailure;
 		action: string;
 		onclose: () => void;
 	};
 
-	let { task, users, failure, action, onclose }: Props = $props();
+	let { task, users, projects, defaultAssigneeId, failure, action, onclose }: Props = $props();
 
 	let submitting = $state(false);
 
 	const prefix = $derived(`task-${task?.id ?? 'new'}`);
 
-	/** What a field shows: the value sent in a failed save, else the task's own. */
-	function initial(field: keyof EditableTask): string {
+	/** What a field shows: the value sent in a failed save, else the task's own (or the default). */
+	function initial(field: keyof EditableTask | 'projectId'): string {
 		const sent = failure?.values?.[field];
 		if (sent !== undefined) return sent;
+		if (field === 'projectId') return '';
+		if (!task && field === 'assigneeId' && defaultAssigneeId) return String(defaultAssigneeId);
 		const value = task?.[field];
 		return value === null || value === undefined ? '' : String(value);
 	}
@@ -57,6 +66,7 @@
 
 	/** Field -> the element an error on it focuses, in form order. */
 	const FIELD_TARGETS = {
+		projectId: 'project',
 		title: 'title',
 		type: 'type',
 		status: 'status',
@@ -103,6 +113,37 @@
 >
 	{#if task}<input type="hidden" name="taskId" value={task.id} />{/if}
 
+	{#if projects}
+		<div>
+			<label for="{prefix}-project" class="label">Project</label>
+			<!-- The form opens on a click, so focus moves into it. -->
+			<!-- svelte-ignore a11y_autofocus -->
+			<select
+				id="{prefix}-project"
+				name="projectId"
+				class="input"
+				required
+				autofocus
+				aria-invalid={errorOf('projectId') ? 'true' : undefined}
+				aria-describedby={errorOf('projectId') ? `${prefix}-project-error` : undefined}
+			>
+				<option value="" disabled selected={!initial('projectId')}>Pick a project</option>
+				{#each projects as project (project.id)}
+					<option value={String(project.id)} selected={initial('projectId') === String(project.id)}>
+						{project.title}
+					</option>
+				{/each}
+			</select>
+			{#if errorOf('projectId')}
+				<p id="{prefix}-project-error" class="field-error">{errorOf('projectId')}</p>
+			{:else if projects.length === 0}
+				<p class="mt-1.5 text-[13px] text-muted-foreground">
+					No projects yet. Create a project first, then add its tasks.
+				</p>
+			{/if}
+		</div>
+	{/if}
+
 	<div>
 		<label for="{prefix}-title" class="label">Title</label>
 		<!-- The form opens on a click, so focus moves into it. -->
@@ -113,7 +154,7 @@
 			class="input"
 			required
 			maxlength="200"
-			autofocus
+			autofocus={!projects}
 			value={initial('title')}
 			placeholder="e.g. Add Klaviyo signup form to the footer"
 			aria-invalid={errorOf('title') ? 'true' : undefined}

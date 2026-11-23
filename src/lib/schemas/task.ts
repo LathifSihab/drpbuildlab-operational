@@ -65,6 +65,11 @@ export const TaskStatusInput = z.enum(TASK_STATUSES);
 /** A task id from a hidden form field. */
 export const TaskId = z.coerce.number().int().positive();
 
+/** The project picked on the "My tasks" add form (the project page sends none). */
+export const TaskProjectId = z.coerce.number({ error: 'Pick a project' }).int().positive({
+	error: 'Pick a project'
+});
+
 /** Reads the task form. Missing fields count as empty strings. */
 export function readTaskForm(data: FormData): Record<TaskField, string> {
 	return Object.fromEntries(

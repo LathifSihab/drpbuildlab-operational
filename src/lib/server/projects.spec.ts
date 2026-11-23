@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { Project } from './db/schema.ts';
-import { diffProject, slugify, type ProjectValues } from './projects.ts';
+import {
+	canAddTools,
+	diffProject,
+	disallowedTools,
+	slugify,
+	type ProjectValues
+} from './projects.ts';
 
 describe('slugify', () => {
 	it('makes readable, accent-free slugs', () => {
@@ -8,6 +14,19 @@ describe('slugify', () => {
 	});
 	it('falls back when nothing usable is left', () => {
 		expect(slugify('***')).toBe('project');
+	});
+});
+
+describe('adding tools', () => {
+	it('is for admins only', () => {
+		expect(canAddTools('admin')).toBe(true);
+		expect(canAddTools('dev')).toBe(false);
+		expect(canAddTools('business')).toBe(false);
+	});
+
+	it('refuses names new to the list, except ones the project already had (ignoring case)', () => {
+		expect(disallowedTools(['Hotjar', 'legacy tool'], ['Legacy Tool'])).toEqual(['Hotjar']);
+		expect(disallowedTools([], [])).toEqual([]);
 	});
 });
 

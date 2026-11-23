@@ -40,7 +40,7 @@ Form components in `src/lib/components/`:
 | `ChoiceChips` | Radio group as pills, for short fixed lists (phase, platform, client type) |
 | `EntityPicker` | Search an existing client/partner or create a new one by typing (ARIA combobox) |
 | `TagInput` | Short free-typed lists (email domains): Enter or comma adds, Backspace removes |
-| `ToolPicker` | Project tools: dropdown of the shared tool list, pick several; the + button (or Enter) adds a new tool, which joins the list on save |
+| `ToolPicker` | Project tools: dropdown of the shared tool list, pick several; admins also get a + button (or Enter) that adds a new tool, which joins the list on save |
 | `ErrorSummary` | "N fields need attention", each item jumps to its field |
 | `FormFooter` | Floating save bar: Save, Cancel, "Unsaved changes", Ctrl/⌘+Enter hint |
 | `PageHeader`, `HistoryList` | Page title block; audit history timeline |

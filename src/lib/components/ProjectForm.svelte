@@ -10,6 +10,8 @@
 		users: { id: number; email: string; name: string | null }[];
 		/** The shared tool list for the tools dropdown. */
 		tools: string[];
+		/** Whether this person may add new names to the tool list (admin only). */
+		canAddTools: boolean;
 		phases: readonly string[];
 		platforms: readonly string[];
 	};
@@ -168,7 +170,11 @@
 		options.platforms.map((p) => ({ value: p, label: optionLabel(p) }))
 	);
 
-	const TOOLS_HINT = 'Pick every tool the project uses. Missing one? Type it and press +.';
+	const TOOLS_HINT = $derived(
+		options.canAddTools
+			? 'Pick every tool the project uses. Missing one? Type it and press +.'
+			: 'Pick every tool the project uses. Missing one? Ask an admin to add it to the list.'
+	);
 
 	function cancel() {
 		if (dirty && !confirm('Discard your changes?')) return;
@@ -393,6 +399,7 @@
 							.map((t) => t.trim())
 							.filter(Boolean)}
 						options={options.tools}
+						allowNew={options.canAddTools}
 						describedby={describedBy('tools', TOOLS_HINT)}
 						invalid={hasError('tools')}
 						onchange={markDirty}

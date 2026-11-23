@@ -5,11 +5,13 @@ import { projects } from '#lib/server/db/schema.ts';
 import {
 	assertUser,
 	auditProject,
+	canAddTools,
 	canEditProjects,
 	ensureTools,
 	loadProjectOptions,
 	projectValues,
 	resolveClient,
+	ToolNotAllowedError,
 	uniqueSlug,
 	UnknownReferenceError
 } from '#lib/server/projects.ts';
@@ -18,7 +20,7 @@ import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!canEditProjects(locals.user.role)) error(403, 'You cannot create projects');
-	return { options: await loadProjectOptions(locals.db), canEdit: true };
+	return { options: await loadProjectOptions(locals.db, locals.user.role), canEdit: true };
 };
 
 export const actions: Actions = {
@@ -50,7 +52,7 @@ export const actions: Actions = {
 				);
 				await assertUser(tx, input.accountManagerId, 'accountManagerId');
 				await assertUser(tx, input.picId, 'picId');
-				const toolNames = await ensureTools(tx, input.tools);
+				const toolNames = await ensureTools(tx, input.tools, { allowNew: canAddTools(user.role) });
 				const row = projectValues(input, { clientId, partnerId, tools: toolNames });
 				const [created] = await tx
 					.insert(projects)
@@ -62,6 +64,10 @@ export const actions: Actions = {
 		} catch (e) {
 			if (e instanceof UnknownReferenceError) {
 				return fail(400, { errors: { [e.field]: ['No longer exists; pick another'] }, values });
+			}
+			if (e instanceof ToolNotAllowedError) {
+				const msg = `Only an admin can add new tools (${e.names.join(', ')}). Pick from the list, or ask an admin.`;
+				return fail(400, { errors: { tools: [msg] }, values });
 			}
 			throw e;
 		}

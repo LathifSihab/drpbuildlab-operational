@@ -1,8 +1,8 @@
 <script lang="ts">
 	/**
-	 * Pick several tools from the shared list (dropdown), or add a new one with the + button
-	 * (or Enter). Picked tools show as chips. New names join the shared list when the form is
-	 * saved. Submits one hidden field with the tools comma-joined, the format the server reads.
+	 * Pick several tools from the shared list (dropdown). With `allowNew` (admins), the + button
+	 * (or Enter) adds a new one, which joins the shared list when the form is saved; without it,
+	 * typing only filters the list. Picked tools show as chips. Submits one hidden field with the tools comma-joined, the format the server reads.
 	 * ARIA combobox with a multi-select listbox: https://www.w3.org/WAI/ARIA/apg/patterns/combobox/
 	 */
 	type Props = {
@@ -14,12 +14,14 @@
 		value: readonly string[];
 		/** The shared tool list. */
 		options: readonly string[];
+		/** Shows the + button and lets typed names become new tools. */
+		allowNew: boolean;
 		describedby?: string;
 		invalid?: boolean;
 		onchange?: () => void;
 	};
 
-	let { name, id, value, options, describedby, invalid, onchange }: Props = $props();
+	let { name, id, value, options, allowNew, describedby, invalid, onchange }: Props = $props();
 
 	// Starts from `value`; the form re-creates this component when it is refilled.
 	// svelte-ignore state_referenced_locally
@@ -44,7 +46,8 @@
 		const matches = options
 			.filter((o) => !q || lower(o).includes(q))
 			.map((o): Row => ({ kind: 'existing', name: o }));
-		const canCreate = trimmed && !trimmed.includes(',') && !known(trimmed) && !isSelected(trimmed);
+		const canCreate =
+			allowNew && trimmed && !trimmed.includes(',') && !known(trimmed) && !isSelected(trimmed);
 		return canCreate ? [...matches, { kind: 'create', name: trimmed }] : matches;
 	});
 
@@ -55,12 +58,15 @@
 		onchange?.();
 	}
 
-	/** Adds what is typed (a comma-separated paste adds several), using the list's spelling. */
+	/**
+	 * Adds what is typed (a comma-separated paste adds several), using the list's spelling.
+	 * Without `allowNew`, only names already in the list are added.
+	 */
 	function addTyped() {
 		const names = query
 			.split(',')
 			.map((n) => n.trim().slice(0, 100))
-			.filter(Boolean);
+			.filter((n) => n && (allowNew || known(n)));
 		if (names.length === 0) {
 			open = true;
 			input?.focus();
@@ -169,7 +175,11 @@
 			aria-describedby={describedByAll}
 			aria-invalid={invalid || undefined}
 			autocomplete="off"
-			placeholder={selected.length ? 'Add another tool' : 'Pick a tool or type a new one'}
+			placeholder={selected.length
+				? 'Add another tool'
+				: allowNew
+					? 'Pick a tool or type a new one'
+					: 'Pick a tool'}
 			class="min-w-32 flex-1 bg-transparent py-1 outline-none"
 			oninput={() => {
 				open = true;
@@ -179,26 +189,28 @@
 			onclick={() => (open = true)}
 			{onkeydown}
 		/>
-		<button
-			type="button"
-			class="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-on-primary hover:bg-primary-hover"
-			aria-label={trimmed ? `Add “${trimmed}”` : 'Add a new tool'}
-			title={trimmed ? `Add “${trimmed}”` : 'Type a tool name, then press + to add it'}
-			onmousedown={(e) => e.preventDefault()}
-			onclick={(e) => {
-				e.stopPropagation();
-				addTyped();
-			}}
-		>
-			<svg viewBox="0 0 16 16" class="size-3.5" aria-hidden="true"
-				><path
-					d="M8 3v10M3 8h10"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-				/></svg
+		{#if allowNew}
+			<button
+				type="button"
+				class="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-on-primary hover:bg-primary-hover"
+				aria-label={trimmed ? `Add “${trimmed}”` : 'Add a new tool'}
+				title={trimmed ? `Add “${trimmed}”` : 'Type a tool name, then press + to add it'}
+				onmousedown={(e) => e.preventDefault()}
+				onclick={(e) => {
+					e.stopPropagation();
+					addTyped();
+				}}
 			>
-		</button>
+				<svg viewBox="0 0 16 16" class="size-3.5" aria-hidden="true"
+					><path
+						d="M8 3v10M3 8h10"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+					/></svg
+				>
+			</button>
+		{/if}
 	</div>
 
 	<ul
@@ -266,7 +278,13 @@
 		<p
 			class="card absolute inset-x-0 top-full z-20 mt-1.5 px-4 py-3 text-sm text-muted-foreground shadow-lg"
 		>
-			{trimmed ? 'Already picked.' : 'No tools in the list yet. Type one and press +.'}
+			{#if trimmed}
+				{allowNew ? 'Already picked.' : `No tool called “${trimmed}”. Ask an admin to add it.`}
+			{:else}
+				{allowNew
+					? 'No tools in the list yet. Type one and press +.'
+					: 'No tools in the list yet. Ask an admin to add them.'}
+			{/if}
 		</p>
 	{/if}
 

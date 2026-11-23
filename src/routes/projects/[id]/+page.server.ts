@@ -9,12 +9,14 @@ import {
 	assertUser,
 	auditProject,
 	canDeleteProjects,
+	canAddTools,
 	canEditProjects,
 	ensureTools,
 	diffProject,
 	loadProjectOptions,
 	projectValues,
 	resolveClient,
+	ToolNotAllowedError,
 	UnknownReferenceError
 } from '#lib/server/projects.ts';
 import { ProjectInput, readProjectForm } from '#lib/schemas/project.ts';
@@ -67,7 +69,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	if (!row || (row.project.deletedAt && !canDelete)) error(404, 'Project not found');
 
 	const [options, history, taskRows] = await Promise.all([
-		loadProjectOptions(locals.db),
+		loadProjectOptions(locals.db, locals.user.role),
 		locals.db
 			.select({
 				id: auditLog.id,
@@ -135,7 +137,10 @@ export const actions: Actions = {
 				);
 				await assertUser(tx, input.accountManagerId, 'accountManagerId');
 				await assertUser(tx, input.picId, 'picId');
-				const toolNames = await ensureTools(tx, input.tools);
+				const toolNames = await ensureTools(tx, input.tools, {
+					allowNew: canAddTools(user.role),
+					alreadyOnProject: before.tools
+				});
 				const after = projectValues(input, { clientId, partnerId, tools: toolNames });
 				const changes = diffProject(before, after);
 				if (Object.keys(changes).length === 0) return;
@@ -145,6 +150,10 @@ export const actions: Actions = {
 		} catch (e) {
 			if (e instanceof UnknownReferenceError) {
 				return fail(400, { errors: { [e.field]: ['No longer exists; pick another'] }, values });
+			}
+			if (e instanceof ToolNotAllowedError) {
+				const msg = `Only an admin can add new tools (${e.names.join(', ')}). Pick from the list, or ask an admin.`;
+				return fail(400, { errors: { tools: [msg] }, values });
 			}
 			throw e;
 		}

@@ -26,7 +26,7 @@ Trigger.dev moved to Phase 2 (decided 2026-11-19). The hello-world wiring alread
 The team can manage projects by hand before intake exists (and fix anything intake gets wrong later).
 
 - Project list with search; create, view, edit, and delete (soft delete: hidden and restorable by an admin).
-- Fields: title, client and partner (pick or type a new one), account manager, PIC (person in charge), phase, platform, product type, site/staging/production/repo URLs (http/https only), domain registrar, tools (several per project, picked from a shared list; anyone who edits projects can add a new tool with +), notes.
+- Fields: title, client and partner (pick or type a new one), account manager, PIC (person in charge), phase, platform, product type, site/staging/production/repo URLs (http/https only), domain registrar, tools (several per project, picked from a shared list; only an admin adds a new tool, with +), notes.
 - Roles: admin, dev, and business create and edit; only admin deletes and restores.
 - Every create, change (with the changed fields), delete, and restore writes `audit_log`; the project page shows its history.
 

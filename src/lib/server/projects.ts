@@ -11,8 +11,10 @@ type DbOrTx = Db | Tx;
 export const canEditProjects = (role: Role) =>
 	role === 'admin' || role === 'dev' || role === 'business';
 export const canDeleteProjects = (role: Role) => role === 'admin';
+/** Only admin adds names to the shared tool list; everyone else picks from it. */
+export const canAddTools = (role: Role) => role === 'admin';
 
-export async function loadProjectOptions(db: Db) {
+export async function loadProjectOptions(db: Db, role: Role) {
 	const [allClients, allUsers, allTools] = await Promise.all([
 		db
 			.select({ id: clients.id, name: clients.name, isPartner: clients.isPartner })
@@ -32,6 +34,7 @@ export async function loadProjectOptions(db: Db) {
 		partners: allClients.filter((c) => c.isPartner).map(({ id, name }) => ({ id, name })),
 		users: allUsers,
 		tools: allTools.map((t) => t.name),
+		canAddTools: canAddTools(role),
 		phases: PROJECT_PHASES,
 		platforms: PLATFORMS
 	};
@@ -125,11 +128,29 @@ export class UnknownReferenceError extends Error {
 	}
 }
 
+/** Names a person without `canAddTools` tried to add: not in the list and not already on the project. */
+export function disallowedTools(missing: string[], alreadyOnProject: readonly string[]): string[] {
+	const kept = new Set(alreadyOnProject.map((n) => n.toLowerCase()));
+	return missing.filter((n) => !kept.has(n.toLowerCase()));
+}
+
+export class ToolNotAllowedError extends Error {
+	constructor(readonly names: string[]) {
+		super(`only an admin can add tools: ${names.join(', ')}`);
+	}
+}
+
 /**
  * Adds tools not yet in the shared list and returns the names as the list spells them, so
- * "klaviyo" typed on a form is saved as the existing "Klaviyo".
+ * "klaviyo" typed on a form is saved as the existing "Klaviyo". Without `allowNew`, a name not in
+ * the list throws ToolNotAllowedError, unless the project already had it (so an older project
+ * still saves).
  */
-export async function ensureTools(db: DbOrTx, names: string[]): Promise<string[]> {
+export async function ensureTools(
+	db: DbOrTx,
+	names: string[],
+	opts: { allowNew: boolean; alreadyOnProject?: readonly string[] }
+): Promise<string[]> {
 	if (names.length === 0) return [];
 	const lowered = [...new Set(names.map((n) => n.toLowerCase()))];
 	const findKnown = async () =>
@@ -143,6 +164,10 @@ export async function ensureTools(db: DbOrTx, names: string[]): Promise<string[]
 		);
 	let known = await findKnown();
 	const missing = names.filter((n) => !known.has(n.toLowerCase()));
+	if (!opts.allowNew) {
+		const refused = disallowedTools(missing, opts.alreadyOnProject ?? []);
+		if (refused.length) throw new ToolNotAllowedError(refused);
+	}
 	if (missing.length) {
 		// Another save may add the same name at the same moment; the unique index settles it.
 		await db

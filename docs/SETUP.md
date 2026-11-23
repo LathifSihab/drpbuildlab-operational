@@ -57,6 +57,15 @@ To renew: create the new token, run `gh secret set <NAME> --env staging --repo L
 
 One project with branches `main`, `staging`, `dev`. Run Drizzle migrations from CI per environment.
 
+### Client zone import
+
+`npm run import:clientzone` copies the client zone's partners and quotes into Ops (`scripts/import-clientzone.ts`, rules in `scripts/clientzone/map.ts`). It reads the client zone in a read-only transaction and never changes it.
+
+- Set `CLIENTZONE_DATABASE_URL` in `.env` (the client zone's Neon `production` branch, project `plain-mouse-54371797`). It is not a Worker variable, so it is not in `.env.example`.
+- Without `--apply` it is a dry run: every write runs in a transaction that is rolled back, and it prints what would be created. Add `--target production` to use `DATABASE_URL_PRODUCTION` instead of `DATABASE_URL`; `--skip Q-2026-XXXXXX,...` leaves quotes out.
+- Active partners become partner clients. Each quote becomes a project (paid or accepted -> `build`, open -> `proposal`, ended -> `closed`, expired -> `lost`) on a client made from the quote's name, email, lead contact and business email domain. Cancelled, draft, `outdated`-labelled and "test" quotes are skipped, and so are leads without a quote.
+- Safe to run again. Each imported row's `client.created` / `project.created` audit entry (actor `system:clientzone-import`) carries `importedFrom` (`clientzone:partner:<id>`, `clientzone:quote:<reference>`); a source row already imported is skipped, even when it was edited or deleted in Ops since, so Ops edits are never overwritten. A client or partner with the same name as an existing one is reused, and an email domain another client already has is left off.
+
 ### Later: Postgres on a VPS
 
 1. Separate databases per environment (`drp_ops_prod`, `drp_ops_staging`).

@@ -23,6 +23,7 @@
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
 		"db:studio": "drizzle-kit studio",
+		"import:clientzone": "node --env-file-if-exists=.env --experimental-transform-types --no-warnings=ExperimentalWarning scripts/import-clientzone.ts",
 		"trigger:dev": "trigger.dev dev",
 		"trigger:deploy": "trigger.dev deploy"
 	},

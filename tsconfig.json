@@ -11,6 +11,7 @@
 		"eslint.config.js",
 		"drizzle.config.ts",
 		"trigger",
+		"scripts",
 		"trigger.config.ts"
 	],
 	"exclude": [

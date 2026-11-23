@@ -22,6 +22,7 @@ The code for Phase 1 is in the repo. These steps connect it to real accounts. Do
 | Token | Where it's stored | Renew by |
 |---|---|---|
 | Cloudflare API token "drp-operational GitHub deploy" | GitHub secret `CLOUDFLARE_API_TOKEN` (env `staging`) | its expiry date (created 2026-11-12; 1 year if chosen) |
+| Cloudflare API token "ops" (user token on the `Info@drpbuildlab.com` account: Workers Scripts, R2 and KV Edit, Account Settings Read, Workers Routes Write; also `CLOUDFLARE_API_TOKEN` in local `.env`) | GitHub secret `CLOUDFLARE_API_TOKEN` (env `production`, set 2026-11-23) | no expiry; when revoked or the owner changes. A production deploy without Workers Scripts Edit fails with "No access to the specified service" |
 | Trigger.dev personal access token | GitHub secret `TRIGGER_ACCESS_TOKEN` (env `staging`) | when revoked or the owner changes |
 
 To renew: create the new token, run `gh secret set <NAME> --env staging --repo LathifSihab/drpbuildlab-operational`, then delete the old token.
